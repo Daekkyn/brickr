@@ -6,7 +6,7 @@
 
 #include <math.h>
 
-#include "point3d.h"
+#include "Vector3.h"
 
 class Model
 {
@@ -23,8 +23,8 @@ public:
 
 private:
     QString m_fileName;
-    QVector<Point3d> m_points;
-    QVector<Point3d> m_normals;
+    QVector<Vector3> m_points;
+    QVector<Vector3> m_normals;
     QVector<int> m_edgeIndices;
     QVector<int> m_pointIndices;
 };

@@ -8,7 +8,8 @@ DEPENDPATH += .
 INCLUDEPATH += .
 
 # Input
-HEADERS += openglscene.h point3d.h model.h \
+HEADERS += openglscene.h model.h \
+    Vector3.h \
     AssemblyPlugin.h \
     AssemblyWidget.h \
     LegoBrick.h \
@@ -22,9 +23,44 @@ SOURCES += main.cpp model.cpp openglscene.cpp \
     LegoCloud.cpp \
     LegoCloudNode.cpp
 
-QT += opengl widgets
+QT += opengl widgets svg
 
 FORMS += \
     AssemblyWidget.ui
 
-ICON =
+INCLUDEPATH += /usr/local/include
+DEPENDPATH += /usr/local/lib
+
+QT_VERSION=$$[QT_VERSION]
+
+contains( QT_VERSION, "^5.*" ) {
+  cache()
+}
+
+OTHER_FILES += ../Resources/builder.icns
+
+win32{
+    DEFINES += NOMINMAX
+}
+
+macx{
+    ICON = $${PWD}/../Resources/builder.icns
+
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS += -O3
+    }
+
+    QMAKE_CXXFLAGS += -std=c++11 -stdlib=libc++
+    QMAKE_LFLAGS += -stdlib=libc++
+    QMAKE_CXXFLAGS += -mmacosx-version-min=10.7
+    QMAKE_LFLAGS += -mmacosx-version-min=10.7
+}
+
+unix:!macx{
+    CONFIG(release, debug|release) {
+         QMAKE_CXXFLAGS += -frounding-math
+         QMAKE_CXXFLAGS += -O3
+    }
+    QMAKE_CXXFLAGS += -std=c++11
+    LIBS += -lpthread
+}

@@ -135,9 +135,9 @@ void OpenGLScene::drawBackground(QPainter *painter, const QRectF &)
         m_lastTime += delta;
 
         glTranslatef(0, 0, -m_distance);
-        glRotatef(m_rotation.x, 1, 0, 0);
-        glRotatef(m_rotation.y, 0, 1, 0);
-        glRotatef(m_rotation.z, 0, 0, 1);
+        glRotatef(m_rotation.x(), 1, 0, 0);
+        glRotatef(m_rotation.y(), 0, 1, 0);
+        glRotatef(m_rotation.z(), 0, 0, 1);
 
         glEnable(GL_MULTISAMPLE);
         m_model->render(m_wireframeEnabled, m_normalsEnabled);
@@ -238,7 +238,7 @@ void OpenGLScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
         return;
     if (event->buttons() & Qt::LeftButton) {
         const QPointF delta = event->scenePos() - event->lastScenePos();
-        const Point3d angularImpulse = Point3d(delta.y(), delta.x(), 0) * 0.1;
+        const Vector3 angularImpulse = Vector3(delta.y(), delta.x(), 0) * 0.1;
 
         m_rotation += angularImpulse;
         m_accumulatedMomentum += angularImpulse;
@@ -255,7 +255,7 @@ void OpenGLScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
         return;
 
     m_mouseEventTime = m_time.elapsed();
-    m_angularMomentum = m_accumulatedMomentum = Point3d();
+    m_angularMomentum = m_accumulatedMomentum = Vector3();
     event->accept();
 }
 

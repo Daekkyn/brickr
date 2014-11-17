@@ -13,8 +13,8 @@ Model::Model(const QString &filePath)
     if (!file.open(QIODevice::ReadOnly))
         return;
 
-    Point3d boundsMin( 1e9, 1e9, 1e9);
-    Point3d boundsMax(-1e9,-1e9,-1e9);
+    Vector3 boundsMin( 1e9, 1e9, 1e9);
+    Vector3 boundsMax(-1e9,-1e9,-1e9);
 
     QTextStream in(&file);
     while (!in.atEnd()) {
@@ -26,7 +26,7 @@ Model::Model(const QString &filePath)
         QString id;
         ts >> id;
         if (id == "v") {
-            Point3d p;
+            Vector3 p;
             for (int i = 0; i < 3; ++i) {
                 ts >> p[i];
                 boundsMin[i] = qMin(boundsMin[i], p[i]);
@@ -61,18 +61,18 @@ Model::Model(const QString &filePath)
         }
     }
 
-    const Point3d bounds = boundsMax - boundsMin;
-    const qreal scale = 1 / qMax(bounds.x, qMax(bounds.y, bounds.z));
+    const Vector3 bounds = boundsMax - boundsMin;
+    const qreal scale = 1 / qMax(bounds.x(), qMax(bounds.y(), bounds.z()));
     for (int i = 0; i < m_points.size(); ++i)
         m_points[i] = (m_points[i] - (boundsMin + bounds * 0.5)) * scale;
 
     m_normals.resize(m_points.size());
     for (int i = 0; i < m_pointIndices.size(); i += 3) {
-        const Point3d a = m_points.at(m_pointIndices.at(i));
-        const Point3d b = m_points.at(m_pointIndices.at(i+1));
-        const Point3d c = m_points.at(m_pointIndices.at(i+2));
+        const Vector3 a = m_points.at(m_pointIndices.at(i));
+        const Vector3 b = m_points.at(m_pointIndices.at(i+1));
+        const Vector3 c = m_points.at(m_pointIndices.at(i+2));
 
-        const Point3d normal = cross(b - a, c - a).normalize();
+        const Vector3 normal = cross(b - a, c - a).normalize();
 
         for (int j = 0; j < 3; ++j)
             m_normals[m_pointIndices.at(i + j)] += normal;
@@ -107,7 +107,7 @@ void Model::render(bool wireframe, bool normals) const
     }
 
     if (normals) {
-        QVector<Point3d> normals;
+        QVector<Vector3> normals;
         for (int i = 0; i < m_normals.size(); ++i)
             normals << m_points.at(i) << (m_points.at(i) + m_normals.at(i) * 0.02f);
         glVertexPointer(3, GL_FLOAT, 0, (float *)normals.data());

@@ -1,31 +1,12 @@
-// Copyright 2012, 2013 Romain Testuz
-// 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-// 
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 #include "LegoCloud.h"
-#include "Dolphin/Core/Utilities/dolphinprogress.h"
 #include "LegoCloudNode.h"
 
 #include <boost/graph/connected_components.hpp>
 #include <boost/graph/biconnected_components.hpp>
 #include <boost/tuple/tuple.hpp>
-#include <Utilities/OpenMeshAlgorithms/Geometry/NearestTriangleSearch/NearestTriangleSearch.h>
 #include <QTime>
 
 #define DEFAULT_COLOR_ID 2
-
-namespace Dolphin {
 
 LegoCloud::LegoCloud()
 {
@@ -83,7 +64,7 @@ LegoCloud::LegoCloud()
 LegoCloud::~LegoCloud()
 {
   removeAllBricks();
-  //dolphinOut() << "Cloud destroyed" << std::endl;
+  //std::cout << "Cloud destroyed" << std::endl;
 }
 
 int LegoCloud::getBrickNumber() const
@@ -278,7 +259,7 @@ void LegoCloud::buildNeighbourhood()//Assumption: there is only 1x1 bricks
 
       if(neighbourNumber == 0)
       {
-        //dolphinOut() << "One brick was removed because it had zero neighbours: ";
+        //std::cout << "One brick was removed because it had zero neighbours: ";
         //brickIt->print();
         toRemove.insert(&(*brickIt));
         //brickIt->setColorId(8);
@@ -291,7 +272,7 @@ void LegoCloud::buildNeighbourhood()//Assumption: there is only 1x1 bricks
 
   foreach(LegoBrick* brick, toRemove)
   {
-    dolphinOut() << "One brick was removed because it had zero neighbours: "; brick->print();
+    std::cout << "One brick was removed because it had zero neighbours: "; brick->print();
     removeBrick(brick);
     //brick->setColorId(1);
   }
@@ -308,7 +289,7 @@ void LegoCloud::preHollow(int shellThickness)
 {
   if(shellThickness < 1)
   {
-    dolphinErr() << "The shell thickness should be greater than 0" << std::endl;
+    std::cerr << "The shell thickness should be greater than 0" << std::endl;
   }
 
   QList<LegoBrick*> toDelete;
@@ -403,7 +384,7 @@ void LegoCloud::merge()
 
     noSuccessNumber++;
   }
-  //dolphinOut()  << "Outer finished" << std::endl;
+  //std::cout  << "Outer finished" << std::endl;
 
   //Then merge the inside bricks
   noSuccessNumber = 0;
@@ -473,7 +454,7 @@ void LegoCloud::solveBrickNumberLimitation()
     int limit = brickLimitation_[size];
     if(limit != -1 && brickNumber_[size] > limit)
     {
-      dolphinOut() << "The number of " << size.first <<"x" << size.second << " bricks ("<< brickNumber_[size]
+      std::cout << "The number of " << size.first <<"x" << size.second << " bricks ("<< brickNumber_[size]
                    <<") cannot be reduced to " << limit << std::endl;
       noProblem = false;
 
@@ -481,7 +462,7 @@ void LegoCloud::solveBrickNumberLimitation()
   }
 
   if(noProblem)
-    dolphinOut() << "Solving number constraints terminated, all constraints are satisfied." << std::endl;
+    std::cout << "Solving number constraints terminated, all constraints are satisfied." << std::endl;
 
   connectedComponents();
   biconnectedComponents();
@@ -493,6 +474,7 @@ void LegoCloud::setBrickLimit(BrickSize size, int value)
   brickLimitation_[size] = value;
 }
 
+/*
 void LegoCloud::loadColors(scenegraph::OpenMeshNode* meshNode)
 {
   typedef Dolphin::defines::Vector3 Vec3;
@@ -511,7 +493,7 @@ void LegoCloud::loadColors(scenegraph::OpenMeshNode* meshNode)
 
   if(textureWidth != textureHeight)
   {
-    dolphinOut() << "Warning: the texture is not squared, some problems might occur." << std::endl;
+    std::cout << "Warning: the texture is not squared, some problems might occur." << std::endl;
   }
 
   GLint numBytes = 0;
@@ -520,22 +502,22 @@ void LegoCloud::loadColors(scenegraph::OpenMeshNode* meshNode)
   /*switch(internalFormat) // determine what type GL texture has...
   {
     case GL_RED:
-      dolphinOut() << "Red" << std::endl;
+      std::cout << "Red" << std::endl;
       numBytes = textureWidth * textureHeight * 1;
       break;
     case GL_RGB:
-      dolphinOut() << "RGB" << std::endl;
+      std::cout << "RGB" << std::endl;
       numBytes = textureWidth * textureHeight * 3;
       break;
     case GL_RGBA:
-      dolphinOut() << "RGBA" << std::endl;
+      std::cout << "RGBA" << std::endl;
       numBytes = textureWidth * textureHeight * 4;
       break;
     default: // unsupported type (or you can put some code to support more formats if you need)
-      dolphinErr() << "Unsupported image type: " << internalFormat << std::endl;
+      std::cerr << "Unsupported image type: " << internalFormat << std::endl;
       return;
       break;
-  }*/
+  }* /
 
 
   GLubyte* buffer = new GLubyte[numBytes];
@@ -566,10 +548,10 @@ void LegoCloud::loadColors(scenegraph::OpenMeshNode* meshNode)
 
         //Compute the 3 texture coordinates of the 3 triangle vertices
         Vec2 texA = mesh->texcoord2D(fheIt);
-        //dolphinOut() << texA << std::endl;
+        //std::cout << texA << std::endl;
         texA.minimize(Vec2(1.0, 1.0));
         texA.maximize(Vec2(0.0, 0.0));
-        //dolphinOut() << texA << std::endl << std::endl;
+        //std::cout << texA << std::endl << std::endl;
 
         Vec3 pointA = mesh->point(mesh->to_vertex_handle(fheIt));
         ++fheIt;
@@ -678,6 +660,7 @@ void LegoCloud::loadColors(scenegraph::OpenMeshNode* meshNode)
 
   delete[] buffer;
 }
+*/
 
 
 void LegoCloud::printBrickTypes()
@@ -718,41 +701,41 @@ void LegoCloud::printBrickTypes()
     for(int colorId = 0; colorId < legalColors_.size(); colorId++)
     {
 
-      dolphinOut() << "Color: (" << legalColors_[colorId] << "): " << std::endl;
+      std::cout << "Color: (" << legalColors_[colorId] << "): " << std::endl;
 
       foreach(const BrickSize& brickSize, legalBricks_)
       {
         if(bricksByColorByType[colorId][brickSize] > 0)
-          dolphinOut() << "\t" << brickSize.first << "x" << brickSize.second  << ": "<< bricksByColorByType[colorId][brickSize] << " bricks" << std::endl;
+          std::cout << "\t" << brickSize.first << "x" << brickSize.second  << ": "<< bricksByColorByType[colorId][brickSize] << " bricks" << std::endl;
       }
     }
-    dolphinOut() << std::endl;
+    std::cout << std::endl;
   }
 
 
   foreach(const BrickSize& brickSize, brickNumber_.keys())
   {
     int size = brickNumber_[brickSize];
-    dolphinOut() << brickSize.first << "x" << brickSize.second << ": " << size << " bricks" << std::endl;
+    std::cout << brickSize.first << "x" << brickSize.second << ": " << size << " bricks" << std::endl;
   }
 
 }
 
 void LegoCloud::printStats()
 {
-  dolphinOut() << "Stats:" << std::endl;
+  std::cout << "Stats:" << std::endl;
   printBrickTypes();
-  dolphinOut() << "Number of bricks: " << getBrickNumber() << std::endl;
-  dolphinOut() << "Height: " << levelNumber_ << " levels " << "(" <<levelNumber_*LEGO_HEIGHT*100.0 << "cm)" << std::endl;
-  dolphinOut() << "Number of connected components: "<< conCompNumber_ << std::endl;
-  dolphinOut() << "Number of weak articulation points: " << badArtPointNumber_ << std::endl;
+  std::cout << "Number of bricks: " << getBrickNumber() << std::endl;
+  std::cout << "Height: " << levelNumber_ << " levels " << "(" <<levelNumber_*LEGO_HEIGHT*100.0 << "cm)" << std::endl;
+  std::cout << "Number of connected components: "<< conCompNumber_ << std::endl;
+  std::cout << "Number of weak articulation points: " << badArtPointNumber_ << std::endl;
 }
 
 float LegoCloud::postHollow()
 {
-  dolphinOut() << "Begin hollow..." << std::endl;
-  progress::setNumberOfSteps(levelNumber_, "hollowing...");
-  progress::setProgress(0);
+  std::cout << "Begin hollow..." << std::endl;
+//  progress::setNumberOfSteps(levelNumber_, "hollowing...");
+//  progress::setProgress(0);
 
 
   QTime time;
@@ -786,13 +769,13 @@ float LegoCloud::postHollow()
     }
   }*/
 
-  //dolphinOut() << "Time hollow: " << time.elapsed()/1000.0 << std::endl;
+  //std::cout << "Time hollow: " << time.elapsed()/1000.0 << std::endl;
 
   connectedComponents();
   biconnectedComponents();
-  progress::finish();
+//  progress::finish();
 
-  dolphinOut() << "End hollow" << std::endl;
+  std::cout << "End hollow" << std::endl;
   //progress::finish();
 
   return time.elapsed()/1000.0;
@@ -1305,7 +1288,7 @@ bool LegoCloud::canMerge(LegoBrick *brick1, LegoBrick *brick2)
 
   if(brick1->getLevel() != brick1->getLevel())
   {
-    dolphinErr() << "Trying to merge bricks on different levels" << std::endl;
+    std::cerr << "Trying to merge bricks on different levels" << std::endl;
     return false;
   }
 
@@ -1327,7 +1310,7 @@ bool LegoCloud::canMerge(LegoBrick *brick1, LegoBrick *brick2)
   //Check for missing bricks:
   if(totalKnobNumber < newBrickSizeX*newBrickSizeY)
   {
-    //dolphinErr() << "Trying to merge uncompatible bricks(missing knobs)" << std::endl;
+    //std::cerr << "Trying to merge uncompatible bricks(missing knobs)" << std::endl;
     return false;
   }
 
@@ -1342,7 +1325,7 @@ bool LegoCloud::canMerge(LegoBrick *brick1, LegoBrick *brick2)
   //Check that this brick exists:
   if(!legalBricks_.contains(BrickSize(newBrickSizeX, newBrickSizeY)))
   {
-    //dolphinErr() << "Trying to merge uncompatible bricks" << std::endl;
+    //std::cerr << "Trying to merge uncompatible bricks" << std::endl;
     return false;
   }
 
@@ -1780,5 +1763,3 @@ bool LegoCloud::canRemoveBrick(LegoBrick *brick)
   else
     return false;
 }
-
-}//namespace

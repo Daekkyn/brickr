@@ -1,46 +1,25 @@
-// Copyright 2012, 2013 Romain Testuz
-// 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-// 
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 #ifndef LEGO_CLOUD_NODE_H
 #define LEGO_CLOUD_NODE_H
-
-#include <Dolphin/Core/Scenegraph/Core/GeometryNode.h>
-#include <Dolphin/Core/DolphinDefines.h>
 
 #include "LegoGraph.h"
 #include "LegoCloud.h"
 
-namespace Dolphin {
-  class LegoBrick;
-}
+#include "Vector3.h"
+#include <QObject>
+
+
+class LegoBrick;
 
 class QGraphicsScene;
 
-namespace Dolphin {
-namespace scenegraph {
-
-class LegoCloudNode : public GeometryNode
+class LegoCloudNode : public QObject
 {
   Q_OBJECT
 
 public:
-  typedef Dolphin::defines::Vector3 Point;
-  typedef Dolphin::defines::Vector4 Color;
   enum ColorRendering {RealColor, Random, ConnectedComp, BiconnectedComp};
 
-  explicit LegoCloudNode(Node* _parent);
+  explicit LegoCloudNode();
   ~LegoCloudNode();
 
 
@@ -49,14 +28,9 @@ public:
   std::string getTypeName() const;
 
   //Inherited from Node
-  void accept(Visitor & _visitor);
-  void recomputeBoundingSphere();//Override
   void recomputeAABB();//Override
 
-  //Inherited from GeometryNode
-  void resetSelection(const bool _notifyObservers = true);
-  void fillDrawData(DrawModes* _drawmodes);
-  void render(DrawModes* _drawmodes);//Override
+  void render();
 
   //New
   inline LegoCloud* getLegoCloud(){ return legoCloud_;}
@@ -79,31 +53,31 @@ public:
   inline void setRenderGraph(bool v){renderGraph_ = v;}
   inline void setColorRendering(ColorRendering col){colorRendering_ = col;}
 
+  void nodeUpdated() { drawDirty_ = true; }
+
   void drawInstructions(QGraphicsScene* scene, bool hintLayerBelow);
   void exportToObj(QString filename);
 
 
 private:
   void drawLegoBrick(const LegoBrick& brick) const;
-  void drawBox(const Point& p1, const Point& p2) const;
+  void drawBox(const Vector3& p1, const Vector3& p2) const;
   void drawBrickOutline(const LegoBrick &brick) const;
-  void drawKnobs(const LegoBrick& brick, const Point &p1) const;
+  void drawKnobs(const LegoBrick& brick, const Vector3 &p1) const;
   void drawNeighbourhood(const LegoBrick& brick, const QSet<LegoBrick*>& neighbours) const;
   void drawLegoGraph(const LegoGraph& graph) const;
   void setColor(const LegoGraph::vertex_descriptor &vertex) const;
 
+  Vector3 minPoint, maxPoint;
 
   LegoCloud* legoCloud_;
   bool renderLayerByLayer_;
   int renderLayer_;
-  GLuint knobList_;
+  uint32_t knobList_;
   bool renderBricks_;
   bool renderGraph_;
   ColorRendering colorRendering_;
-
-
+  bool drawDirty_;
 };
-
-}}//namespaces
 
 #endif

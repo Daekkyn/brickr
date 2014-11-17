@@ -1,32 +1,14 @@
-// Copyright 2012, 2013 Romain Testuz
-// 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-// 
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 #ifndef LEGO_BRICK_H
 #define LEGO_BRICK_H
 
-#include <Dolphin/Core/DolphinDefines.h>
-#include <Dolphin/Core/Utilities/dolphinstream.h>
-
 #include<QSet>
 
+#include "Vector3.h"
 #include "LegoDimensions.h"
-
-namespace Dolphin {
+#include <iostream>
 
 typedef QPair<int, int> BrickSize;
-typedef Dolphin::defines::Vector3 Color3;
+typedef Vector3 Color3;
 
 class LegoBrick
 {
@@ -59,8 +41,8 @@ public:
   inline int getKnobNumber() const {return sizeX_*sizeY_;}
 
   inline const Color3 getRandColor() const {return randColor_;}
-  inline const int getColorId() const {return colorId_;}
-  inline const void setColorId(int id) { colorId_ = id;}
+  inline int getColorId() const {return colorId_;}
+  inline void setColorId(int id) { colorId_ = id;}
   inline void setRandColor(double r, double g, double b) {randColor_[0] = r; randColor_[1] = g; randColor_[2] = b;}
 
 
@@ -91,7 +73,7 @@ public:
   }
 
   inline void print() const{
-    dolphinOut() << "LegoBrick(" << level_ << ", " << posX_ << ", " << posY_ << ", " << sizeX_ << ", " << sizeY_ << ", "<< (isOuter_ ? "Outer" : "Inner") << ")" << std::endl;
+    std::cout << "LegoBrick(" << level_ << ", " << posX_ << ", " << posY_ << ", " << sizeX_ << ", " << sizeY_ << ", "<< (isOuter_ ? "Outer" : "Inner") << ")" << std::endl;
   }
 
 private:
@@ -116,5 +98,4 @@ inline uint qHash(const LegoBrick& brick)
     return brick.getHash();
 }*/
 
-}//namespace
 #endif

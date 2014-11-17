@@ -1,18 +1,3 @@
-// Copyright 2012, 2013 Romain Testuz
-// 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-// 
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 #ifndef LEGO_CLOUD_H
 #define LEGO_CLOUD_H
 
@@ -22,13 +7,8 @@
 #include <QPair>
 #include <QMap>
 
-#include <Dolphin/Core/DolphinDefines.h>
-#include <Dolphin/Core/Scenegraph/Geometry/OpenMeshNode.h>
-
 #include "LegoBrick.h"
 #include "LegoGraph.h"
-
-namespace Dolphin {
 
 class LegoCloud
 {
@@ -60,7 +40,7 @@ public:
   void solveBrickNumberLimitation();
   void setBrickLimit(BrickSize size, int value);
 
-  void loadColors(scenegraph::OpenMeshNode *meshNode);
+//  void loadColors(scenegraph::OpenMeshNode *meshNode);
 
 
   void printBrickTypes();
@@ -134,5 +114,4 @@ private:
 
 };
 
-}//namespace
 #endif

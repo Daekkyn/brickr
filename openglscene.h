@@ -1,7 +1,7 @@
 #ifndef OPENGLSCENE_H
 #define OPENGLSCENE_H
 
-#include "point3d.h"
+#include "Vector3.h"
 
 #include <QGraphicsScene>
 #include <QLabel>
@@ -55,9 +55,9 @@ private:
     int m_mouseEventTime;
 
     float m_distance;
-    Point3d m_rotation;
-    Point3d m_angularMomentum;
-    Point3d m_accumulatedMomentum;
+    Vector3 m_rotation;
+    Vector3 m_angularMomentum;
+    Vector3 m_accumulatedMomentum;
 
     QLabel *m_labels[4];
     QWidget *m_modelButton;

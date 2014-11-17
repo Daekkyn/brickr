@@ -1,28 +1,4 @@
-// Copyright 2012, 2013 Romain Testuz
-// 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-// 
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 #include "LegoCloudNode.h"
-
-#include <Dolphin/Core/Scenegraph/Visitor/Visitor.h>
-#include <Dolphin/Core/Scenegraph/NodeTypes.h>
-#include <Dolphin/Core/Scenegraph/Core/Material.h>
-#include <Dolphin/Core/Scenegraph/Core/DrawModes.h>
-#include <Dolphin/Core/DataStructures/Sphere.h>
-#include <Dolphin/Core/DataStructures/AABB.h>
-
-#include <Dolphin/Core/Utilities/dolphinstream.h>
 
 #include <qmath.h>
 #include <QGraphicsScene>
@@ -33,18 +9,15 @@
 #include "LegoCloud.h"
 #include "LegoGraph.h"
 
+#include <glu.h>
+
 #define KNOB_RESOLUTION_DISPLAY 15
 #define KNOB_RESOLUTION_OBJ_EXPORT 15
 
 
-namespace Dolphin {
-namespace scenegraph {
-
-
-LegoCloudNode::LegoCloudNode(Node* _parent)
-  : GeometryNode(_parent),
-    legoCloud_(new LegoCloud()), renderLayerByLayer_(false), renderLayer_(0), knobList_(glGenLists(1)),
-    renderBricks_(true), renderGraph_(false), colorRendering_(RealColor)
+LegoCloudNode::LegoCloudNode()
+  : legoCloud_(new LegoCloud()), renderLayerByLayer_(false), renderLayer_(0), knobList_(glGenLists(1)),
+    renderBricks_(true), renderGraph_(false), colorRendering_(RealColor), drawDirty_(true)
 {
 
 }
@@ -52,39 +25,7 @@ LegoCloudNode::LegoCloudNode(Node* _parent)
 LegoCloudNode::~LegoCloudNode()
 {
   delete legoCloud_;
-  //dolphinOut() << "Node destroyed" << std::endl;
-}
-
-int LegoCloudNode::getType() const
-{
-  return LEGO_CLOUD_NODE;
-}
-
-std::string LegoCloudNode::getTypeName() const
-{
-  return "LegoCloudNode";
-}
-
-//CopyPaste
-void LegoCloudNode::accept(Visitor & _visitor)
-{
-    if(_visitor.enter(this)) {
-            for(int i=0; i<getNumberOfChildren(); ++i) {
-                    getChild(i)->accept(_visitor);
-            }
-    }
-    _visitor.leave(this);
-}
-
-void LegoCloudNode::recomputeBoundingSphere() {
-  if(aabbIsDirty_)
-    recomputeAABB();
-
-  //boundingSphere_->setEmpty();
-  boundingSphere_->setRadius(aabb_->getRadius());
-  boundingSphere_->setCenter(aabb_->getCenter());
-
-  boundingSphereIsDirty_  = false;
+  //std::cout << "Node destroyed" << std::endl;
 }
 
 void LegoCloudNode::recomputeAABB()
@@ -113,29 +54,19 @@ void LegoCloudNode::recomputeAABB()
     }
   }
 
-  aabb_->set(Point(minX*LEGO_KNOB_DISTANCE, minLevel*LEGO_HEIGHT, minY*LEGO_KNOB_DISTANCE),
-             Point(maxX*LEGO_KNOB_DISTANCE, maxLevel*LEGO_HEIGHT, maxY*LEGO_KNOB_DISTANCE));
-
-  aabbIsDirty_  = false;
+  minPoint = Vector3(minX*LEGO_KNOB_DISTANCE, minLevel*LEGO_HEIGHT, minY*LEGO_KNOB_DISTANCE);
+  maxPoint = Vector3(maxX*LEGO_KNOB_DISTANCE, maxLevel*LEGO_HEIGHT, maxY*LEGO_KNOB_DISTANCE);
 }
 
-void LegoCloudNode::resetSelection(const bool _notifyObservers)
-{
-}
-
-void LegoCloudNode::fillDrawData(DrawModes* _drawmodes)
-{
-}
-
-void LegoCloudNode::render(DrawModes* _drawmodes)
+void LegoCloudNode::render()
 {
   /*float specularity_[4] = {0.7, 0.7, 0.7, 1.0};
   glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
   glEnable(GL_COLOR_MATERIAL);
   glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, specularity_);
-  glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 32);*/
+  glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 32);
   glLineWidth(getDefaultMaterial()->getEdgeWidth());
-  glPointSize(getDefaultMaterial()->getVertexRadius());
+  glPointSize(getDefaultMaterial()->getVertexRadius());*/
 
   glEnable(GL_CULL_FACE);
   glCullFace(GL_BACK);
@@ -185,6 +116,8 @@ void LegoCloudNode::render(DrawModes* _drawmodes)
     }
   }
 
+  drawDirty_ = false;
+
   if(renderGraph_)
     drawLegoGraph(graph);
 }
@@ -194,12 +127,12 @@ void LegoCloudNode::render(DrawModes* _drawmodes)
 
 void LegoCloudNode::drawLegoBrick(const LegoBrick &brick) const
 {
-  Point p1;//Back corner down left
+  Vector3 p1;//Back corner down left
   p1[0] = brick.getPosX()*LEGO_KNOB_DISTANCE + LEGO_HORIZONTAL_TOLERANCE;
   p1[1] = brick.getLevel()*LEGO_HEIGHT;
   p1[2] = brick.getPosY()*LEGO_KNOB_DISTANCE + LEGO_HORIZONTAL_TOLERANCE;
 
-  Point p2;//Front corner up right
+  Vector3 p2;//Front corner up right
   p2[0] = p1[0] + brick.getSizeX()*LEGO_KNOB_DISTANCE - LEGO_HORIZONTAL_TOLERANCE;
   p2[1] = p1[1] + LEGO_HEIGHT;
   p2[2] = p1[2] + brick.getSizeY()*LEGO_KNOB_DISTANCE - LEGO_HORIZONTAL_TOLERANCE;
@@ -210,7 +143,7 @@ void LegoCloudNode::drawLegoBrick(const LegoBrick &brick) const
 
 }
 
-void LegoCloudNode::drawBox(const Point &p1, const Point &p2) const
+void LegoCloudNode::drawBox(const Vector3 &p1, const Vector3 &p2) const
 {
   glBegin(GL_QUADS);
   //Bottom
@@ -261,12 +194,12 @@ void LegoCloudNode::drawBox(const Point &p1, const Point &p2) const
 
 void LegoCloudNode::drawBrickOutline(const LegoBrick &brick) const
 {
-  Point p1;//Back corner down left
+  Vector3 p1;//Back corner down left
   p1[0] = brick.getPosX()*LEGO_KNOB_DISTANCE + LEGO_HORIZONTAL_TOLERANCE;
   p1[1] = brick.getLevel()*LEGO_HEIGHT;
   p1[2] = brick.getPosY()*LEGO_KNOB_DISTANCE + LEGO_HORIZONTAL_TOLERANCE;
 
-  Point p2;//Front corner up right
+  Vector3 p2;//Front corner up right
   p2[0] = p1[0] + brick.getSizeX()*LEGO_KNOB_DISTANCE - LEGO_HORIZONTAL_TOLERANCE;
   p2[1] = p1[1] + LEGO_HEIGHT;
   p2[2] = p1[2] + brick.getSizeY()*LEGO_KNOB_DISTANCE - LEGO_HORIZONTAL_TOLERANCE;
@@ -303,7 +236,7 @@ void LegoCloudNode::drawBrickOutline(const LegoBrick &brick) const
 
 
   //Draw knob outline:
-  Point p;//Center of back left knob (top)
+  Vector3 p;//Center of back left knob (top)
   p[0] = p1[0] + LEGO_KNOB_DISTANCE/2.0;
   p[1] = p1[1] + LEGO_HEIGHT + LEGO_KNOB_HEIGHT;
   p[2] = p1[2] + LEGO_KNOB_DISTANCE/2.0;
@@ -338,14 +271,14 @@ void LegoCloudNode::drawBrickOutline(const LegoBrick &brick) const
 
 }
 
-void LegoCloudNode::drawKnobs(const LegoBrick &brick, const Point &p1) const
+void LegoCloudNode::drawKnobs(const LegoBrick &brick, const Vector3 &p1) const
 {
-  Point p;//Center of back left knob (top)
+  Vector3 p;//Center of back left knob (top)
   p[0] = p1[0] + LEGO_KNOB_DISTANCE/2.0;
   p[1] = p1[1] + LEGO_HEIGHT + LEGO_KNOB_HEIGHT;
   p[2] = p1[2] + LEGO_KNOB_DISTANCE/2.0;
 
-  //glColor3dv(brick.getColor());
+  //glColor3fv(brick.getColor());
 
   for(int x = 0; x < brick.getSizeX(); ++x)
   {
@@ -388,15 +321,15 @@ void LegoCloudNode::drawNeighbourhood(const LegoBrick &brick, const QSet<LegoBri
 {
 
   const double DRAW_HEIGHT = 0.01;
-  Point brickCenter;
+  Vector3 brickCenter;
   brickCenter[0] = brick.getPosX()*LEGO_KNOB_DISTANCE + (brick.getSizeX()*LEGO_KNOB_DISTANCE)/2.0;
   brickCenter[1] = brick.getLevel()*LEGO_HEIGHT + LEGO_KNOB_HEIGHT + DRAW_HEIGHT;
   brickCenter[2] = brick.getPosY()*LEGO_KNOB_DISTANCE + (brick.getSizeY()*LEGO_KNOB_DISTANCE)/2.0;
 
   //glLineWidth(2);
-  glColor3dv(brick.getRandColor());
+  glColor3fv(brick.getRandColor().data());
 
-  Point neighbourCenter;
+  Vector3 neighbourCenter;
 
   glDisable(GL_LIGHTING);
   glBegin(GL_LINES);
@@ -406,8 +339,8 @@ void LegoCloudNode::drawNeighbourhood(const LegoBrick &brick, const QSet<LegoBri
     neighbourCenter[0] = neighbour->getPosX()*LEGO_KNOB_DISTANCE + (neighbour->getSizeX()*LEGO_KNOB_DISTANCE)/2.0;
     neighbourCenter[1] = neighbour->getLevel()*LEGO_HEIGHT + LEGO_KNOB_HEIGHT + DRAW_HEIGHT;
     neighbourCenter[2] = neighbour->getPosY()*LEGO_KNOB_DISTANCE + (neighbour->getSizeY()*LEGO_KNOB_DISTANCE)/2.0;
-    glVertex3dv(brickCenter.data());
-    glVertex3dv(neighbourCenter.data());
+    glVertex3fv(brickCenter.data());
+    glVertex3fv(neighbourCenter.data());
   }
 
   glEnd();
@@ -426,14 +359,14 @@ void LegoCloudNode::drawLegoGraph(const LegoGraph & graph) const
     const LegoBrick* brick = graph[*vertexIt].brick;
     if(!renderLayerByLayer_ || (renderLayerByLayer_ && (brick->getLevel() == renderLayer_ || brick->getLevel() == renderLayer_+1)))
     {
-      Point brickCenter;
+      Vector3 brickCenter;
       brickCenter[0] = brick->getPosX()*LEGO_KNOB_DISTANCE + (brick->getSizeX()*LEGO_KNOB_DISTANCE)/2.0;
       brickCenter[1] = brick->getLevel()*LEGO_HEIGHT + LEGO_HEIGHT;
       brickCenter[2] = brick->getPosY()*LEGO_KNOB_DISTANCE + (brick->getSizeY()*LEGO_KNOB_DISTANCE)/2.0;
 
       //glColor3d(1,0,0);
       setColor(*vertexIt);
-      glVertex3dv(brickCenter.data());
+      glVertex3fv(brickCenter.data());
     }
   }
   glEnd();
@@ -451,20 +384,20 @@ void LegoCloudNode::drawLegoGraph(const LegoGraph & graph) const
                                 (source->getLevel() == renderLayer_ || source->getLevel() == renderLayer_+1) &&
                                 (target->getLevel() == renderLayer_ || target->getLevel() == renderLayer_+1)))
     {
-      Point sourceCenter;
+      Vector3 sourceCenter;
       sourceCenter[0] = source->getPosX()*LEGO_KNOB_DISTANCE + (source->getSizeX()*LEGO_KNOB_DISTANCE)/2.0;
       sourceCenter[1] = source->getLevel()*LEGO_HEIGHT + LEGO_HEIGHT;
       sourceCenter[2] = source->getPosY()*LEGO_KNOB_DISTANCE + (source->getSizeY()*LEGO_KNOB_DISTANCE)/2.0;
 
-      Point targetCenter;
+      Vector3 targetCenter;
       targetCenter[0] = target->getPosX()*LEGO_KNOB_DISTANCE + (target->getSizeX()*LEGO_KNOB_DISTANCE)/2.0;
       targetCenter[1] = target->getLevel()*LEGO_HEIGHT + LEGO_HEIGHT;
       targetCenter[2] = target->getPosY()*LEGO_KNOB_DISTANCE + (target->getSizeY()*LEGO_KNOB_DISTANCE)/2.0;
 
       glColor3d(0,0,1);
 
-      glVertex3dv(sourceCenter.data());
-      glVertex3dv(targetCenter.data());
+      glVertex3fv(sourceCenter.data());
+      glVertex3fv(targetCenter.data());
     }
 
   }
@@ -478,18 +411,18 @@ void LegoCloudNode::setColor(const LegoGraph::vertex_descriptor& vertex) const
   switch(colorRendering_)
   {
     case RealColor:
-      glColor3dv(legoCloud_->getLegalColor()[graph[vertex].brick->getColorId()]);
+      glColor3fv(legoCloud_->getLegalColor()[graph[vertex].brick->getColorId()].data());
       break;
 
     case Random:
       //glColor3d(boost::out_degree(vertex, graph)/10.0, 0.0, 0.0);
 
-      //glColor3dv(graph[vertex].brick->getRandColor());
-      glColor3dv(legoCloud_->getLegalColor()[graph[vertex].brick->getHash() % legoCloud_->getLegalColor().size()]);
+      //glColor3fv(graph[vertex].brick->getRandColor());
+      glColor3fv(legoCloud_->getLegalColor()[graph[vertex].brick->getHash() % legoCloud_->getLegalColor().size()].data());
       /*if(graph[vertex].brick->isOuter())
-        glColor3dv(graph[vertex].brick->getRandColor());
+        glColor3fv(graph[vertex].brick->getRandColor());
       else
-        glColor3dv(graph[vertex].brick->getRandColor() + Color3(0.5, 0,0));*/
+        glColor3fv(graph[vertex].brick->getRandColor() + Color3(0.5, 0,0));*/
       break;
 
     case ConnectedComp:
@@ -512,7 +445,7 @@ void LegoCloudNode::setColor(const LegoGraph::vertex_descriptor& vertex) const
       }
       else
       {
-        glColor3dv(graph[vertex].brick->getRandColor());
+        glColor3fv(graph[vertex].brick->getRandColor().data());
       }
       break;
 
@@ -561,10 +494,10 @@ void LegoCloudNode::drawInstructions(QGraphicsScene *scene, bool hintLayerBelow)
 void LegoCloudNode::exportToObj(QString filename)
 {
   //Create the file
-  ofstream objFile (filename.toStdString().c_str());
+  std::ofstream objFile (filename.toStdString().c_str());
   if (!objFile.is_open())
   {
-    dolphinErr() << "LegoCloudNode: unable to create or open the file: " << filename.toStdString().c_str() << std::endl;
+    std::cerr << "LegoCloudNode: unable to create or open the file: " << filename.toStdString().c_str() << std::endl;
   }
 
   const float LEGO_VERTICAL_TOLERANCE = 0.0001;
@@ -578,19 +511,19 @@ void LegoCloudNode::exportToObj(QString filename)
     {
       const LegoBrick* brick = &(*brickIt);
 
-      Point p1;//Back corner down left
+      Vector3 p1;//Back corner down left
       p1[0] = brick->getPosX()*LEGO_KNOB_DISTANCE + LEGO_HORIZONTAL_TOLERANCE;
       p1[1] = brick->getLevel()*LEGO_HEIGHT + LEGO_VERTICAL_TOLERANCE;
       p1[2] = brick->getPosY()*LEGO_KNOB_DISTANCE + LEGO_HORIZONTAL_TOLERANCE;
       //p1 *= 10.0;
 
-      Point p2;//Front corner up right
+      Vector3 p2;//Front corner up right
       p2[0] = p1[0] + brick->getSizeX()*LEGO_KNOB_DISTANCE - LEGO_HORIZONTAL_TOLERANCE;
       p2[1] = p1[1] + LEGO_HEIGHT - LEGO_VERTICAL_TOLERANCE;
       p2[2] = p1[2] + brick->getSizeY()*LEGO_KNOB_DISTANCE - LEGO_HORIZONTAL_TOLERANCE;
       //p2 *= 10.0;
 
-      Point knobCenter;//Center of back left knob (top)
+      Vector3 knobCenter;//Center of back left knob (top)
       knobCenter[0] = p1[0] + LEGO_KNOB_DISTANCE/2.0;
       knobCenter[1] = p1[1] + LEGO_HEIGHT + LEGO_KNOB_HEIGHT;
       knobCenter[2] = p1[2] + LEGO_KNOB_DISTANCE/2.0;
@@ -723,5 +656,3 @@ void LegoCloudNode::exportToObj(QString filename)
 
   objFile.close();
 }
-
-}}//namespaces
