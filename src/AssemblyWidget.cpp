@@ -10,15 +10,18 @@
 #include <QSvgGenerator>
 #include <QtCore/QSettings>
 #include <QInputDialog>
+#include <QApplication>
 
 //#define STATISTICS
 
-AssemblyWidget::AssemblyWidget(AssemblyPlugin& _plugin, QWidget* _parent)
+AssemblyWidget::AssemblyWidget(std::shared_ptr<AssemblyPlugin> _plugin, QWidget* _parent)
   : QWidget(_parent), Ui_AssemblyWidget(), plugin_(_plugin) {
 
   setupUi(this);
   //instructionView->setScene(&scene_);
   //instructionView->scale(10, 10);
+
+  plugin_->setWidget(this);
 }
 
 AssemblyWidget::~AssemblyWidget() {
@@ -29,11 +32,11 @@ void AssemblyWidget::setMaxLayerSpinBox(int max)
   layerSpinBox->setMaximum(max);
 }
 
-void AssemblyWidget::on_testButton_pressed(){
+void AssemblyWidget::on_testButton_pressed() {
   resetUi();
-  plugin_.test(testXSpinBox->value(), testYSpinBox->value(), testZSpinBox->value());
+  plugin_->test(testXSpinBox->value(), testYSpinBox->value(), testZSpinBox->value());
 
-  LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+  LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
   if(!legoCloudNode)
     return;
 
@@ -73,7 +76,7 @@ void AssemblyWidget::on_loadFileButton_pressed()
       {
         loadFile(selectedFilePath, voxRes);
 
-        LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+        LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
         if(!legoCloudNode)
           return;
 
@@ -82,7 +85,7 @@ void AssemblyWidget::on_loadFileButton_pressed()
         statFileTextStream << legoCloudNode->getLegoCloud()->getBrickNumber() << "\t";
 
         // (time, (conCompIterations, artPointIteration))
-        QPair<float, QPair<int, int> > autoOptimizeResult = plugin_.autoOptimize();
+        QPair<float, QPair<int, int> > autoOptimizeResult = plugin_->autoOptimize();
 
         statFileTextStream << autoOptimizeResult.first << "\t";
 
@@ -130,7 +133,7 @@ void AssemblyWidget::on_loadFileButton_pressed()
   if(isMeshExtensionSupported(selectedFileinfo.suffix()))
   {
     bool ok;
-    int voxelizationResolution = QInputDialog::getInt(this, "Voxelization resolution",
+    int voxelizationResolution = QInputDialog::getInt(qApp->activeWindow(), "Voxelization resolution",
                                                       "Please enter the resolution that you want:", 30, 1, 999999999, 1, &ok);
 
     if(!ok)
@@ -157,7 +160,7 @@ void AssemblyWidget::on_loadFileButton_pressed()
 
 void AssemblyWidget::on_loadTextureButton_pressed()
 {
-  LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+  LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
   if(!legoCloudNode)
     return;
 
@@ -170,16 +173,16 @@ void AssemblyWidget::on_loadTextureButton_pressed()
   if(texFileName.isNull())
     return;
 
-//  plugin_.removeAllMeshes();
-//  plugin_.loadObj(objFileName);
-//  plugin_.loadTexture(texFileName);
+//  plugin_->removeAllMeshes();
+//  plugin_->loadObj(objFileName);
+//  plugin_->loadTexture(texFileName);
   realColorRadioButton->setChecked(true);
   legoCloudNode->nodeUpdated();
 }
 
 void AssemblyWidget::on_mergeButton_pressed()
 {
-  LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+  LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
   if(!legoCloudNode)
     return;
 
@@ -188,7 +191,7 @@ void AssemblyWidget::on_mergeButton_pressed()
 }
 
 void AssemblyWidget::on_layerSpinBox_valueChanged(int _value){
-  LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+  LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
   if(!legoCloudNode)
     return;
 
@@ -201,7 +204,7 @@ void AssemblyWidget::on_layerSpinBox_valueChanged(int _value){
 
 void AssemblyWidget::on_layerBox_stateChanged(int state)
 {
-  LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+  LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
   if(!legoCloudNode)
     return;
 
@@ -214,7 +217,7 @@ void AssemblyWidget::on_layerBox_stateChanged(int state)
 
 void AssemblyWidget::on_renderBricksBox_stateChanged(int state)
 {
-  LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+  LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
   if(!legoCloudNode)
     return;
 
@@ -228,7 +231,7 @@ void AssemblyWidget::on_renderBricksBox_stateChanged(int state)
 
 void AssemblyWidget::on_renderGraphBox_stateChanged(int state)
 {
-  LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+  LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
   if(!legoCloudNode)
     return;
 
@@ -244,7 +247,7 @@ void AssemblyWidget::on_randomRadioButton_toggled(bool checked)
 {
   if(checked)
   {
-    LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+    LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
     if(!legoCloudNode)
       return;
 
@@ -257,7 +260,7 @@ void AssemblyWidget::on_realColorRadioButton_toggled(bool checked)
 {
   if(checked)
   {
-    LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+    LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
     if(!legoCloudNode)
       return;
 
@@ -270,7 +273,7 @@ void AssemblyWidget::on_conRadioButton_toggled(bool checked)
 {
   if(checked)
   {
-    LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+    LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
     if(!legoCloudNode)
       return;
 
@@ -283,7 +286,7 @@ void AssemblyWidget::on_biconRadioButton_toggled(bool checked)
 {
   if(checked)
   {
-    LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+    LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
     if(!legoCloudNode)
       return;
 
@@ -294,7 +297,7 @@ void AssemblyWidget::on_biconRadioButton_toggled(bool checked)
 
 void AssemblyWidget::on_splitConCompButton_pressed()
 {
-  LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+  LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
   if(!legoCloudNode)
     return;
 
@@ -304,7 +307,7 @@ void AssemblyWidget::on_splitConCompButton_pressed()
 
 void AssemblyWidget::on_loopConCompButton_pressed()
 {
-  LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+  LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
   if(!legoCloudNode)
     return;
 
@@ -314,7 +317,7 @@ void AssemblyWidget::on_loopConCompButton_pressed()
 
 void AssemblyWidget::on_splitBiconCompButton_pressed()
 {
-  LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+  LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
   if(!legoCloudNode)
     return;
 
@@ -324,7 +327,7 @@ void AssemblyWidget::on_splitBiconCompButton_pressed()
 
 void AssemblyWidget::on_loopBiconCompButton_pressed()
 {
-  LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+  LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
   if(!legoCloudNode)
     return;
 
@@ -334,7 +337,7 @@ void AssemblyWidget::on_loopBiconCompButton_pressed()
 
 void AssemblyWidget::on_postHollowButton_pressed()
 {
-  LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+  LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
   if(!legoCloudNode)
     return;
 
@@ -344,7 +347,7 @@ void AssemblyWidget::on_postHollowButton_pressed()
 
 void AssemblyWidget::on_saveInstructionsButton_pressed()
 {
-  LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+  LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
   if(!legoCloudNode)
     return;
 
@@ -410,7 +413,7 @@ void AssemblyWidget::on_saveInstructionsButton_pressed()
 
 void AssemblyWidget::on_objExportButton_pressed()
 {
-  LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+  LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
   if(!legoCloudNode)
     return;
 
@@ -426,7 +429,7 @@ void AssemblyWidget::on_objExportButton_pressed()
 
 void AssemblyWidget::on_printStatsButton_pressed()
 {
-  LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+  LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
   if(!legoCloudNode)
     return;
 
@@ -435,12 +438,12 @@ void AssemblyWidget::on_printStatsButton_pressed()
 
 void AssemblyWidget::on_autoOptimizeButton_pressed()
 {
-  plugin_.autoOptimize();
+  plugin_->autoOptimize();
 }
 
 void AssemblyWidget::on_finalizeButton_pressed()
 {
-  LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+  LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
   if(!legoCloudNode)
     return;
 
@@ -454,7 +457,7 @@ void AssemblyWidget::on_finalizeButton_pressed()
 
 void AssemblyWidget::on_solveBrickLimitButton_pressed()
 {
-  LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+  LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
   if(!legoCloudNode)
     return;
 
@@ -543,7 +546,7 @@ void AssemblyWidget::loadFile(const QString &filePath, int voxelizationResolutio
 
   if(!selectedFileinfo.exists() || !selectedFileinfo.isReadable())
   {
-    std::cerr << "Assembly Plugin > Unable to open file: " << filePath.toStdString().c_str() << std::endl;
+    std::cerr << "Unable to open file: " << filePath.toStdString().c_str() << std::endl;
     return;
   }
 
@@ -555,12 +558,12 @@ void AssemblyWidget::loadFile(const QString &filePath, int voxelizationResolutio
     QFile binvoxFile(binvoxFilePath);
 
     //We make sure that binvoxFilePath does not exist
-    std::cout << "Removing file: " << binvoxFilePath.toStdString() << std::endl;
+    std::cout << "Removing file: " << qPrintable(binvoxFilePath) << std::endl;
     binvoxFile.remove();
 
     //First we try to find it in its default location
-    QFileInfo binvoxProgramFileInfo(QCoreApplication::applicationDirPath() + "/../Resources/AssemblyPlugin/binvox");
-    std::cout << QCoreApplication::applicationFilePath().toStdString() << std::endl;
+    QFileInfo binvoxProgramFileInfo(QCoreApplication::applicationDirPath() + "/../Resources/binvox");
+    std::cout << qPrintable(QCoreApplication::applicationFilePath()) << std::endl;
     if(!binvoxProgramFileInfo.exists())
     {
       QSettings settings;
@@ -573,7 +576,7 @@ void AssemblyWidget::loadFile(const QString &filePath, int voxelizationResolutio
         QString binvoxFilePath = QFileDialog::getOpenFileName(this, "Locate binvox executable");
         if(binvoxFilePath.isNull())
         {
-          std::cerr << "Assembly Plugin: the binvox executable was not found." << std::endl;
+          std::cerr << "The binvox executable was not found." << std::endl;
           return;
         }
 
@@ -590,11 +593,13 @@ void AssemblyWidget::loadFile(const QString &filePath, int voxelizationResolutio
 
     if(binvoxProgramOutputFile.exists())
     {
-      std::cout << "Removing file: " << binvoxProgramOutputFile.fileName().toStdString().c_str() << std::endl;
+      std::cout << "Removing file: " << qPrintable(binvoxProgramOutputFile.fileName()) << std::endl;
       assert(binvoxProgramOutputFile.remove());
     }
 
-    QString command(binvoxProgramFileInfo.absoluteFilePath()+ " -pb -d "+ QString::number(voxelizationResolution) + " " +filePath);
+//    QString command(binvoxProgramFileInfo.absoluteFilePath()+ " -pb -d "+ QString::number(voxelizationResolution) + " " +filePath);
+    QString command(binvoxProgramFileInfo.absoluteFilePath()+ " -d "+ QString::number(voxelizationResolution) + " " +filePath);
+    std::cout << "Running " << qPrintable(command) << std::endl;
     system(command.toStdString().c_str());
 
     if(!binvoxProgramOutputFile.exists())
@@ -613,9 +618,9 @@ void AssemblyWidget::loadFile(const QString &filePath, int voxelizationResolutio
     binvoxFilePath = filePath;
   }
 
-  plugin_.loadVoxelization(binvoxFilePath);
+  plugin_->loadVoxelization(binvoxFilePath);
 
-  LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+  LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
   if(!legoCloudNode)
     return;
 
@@ -636,7 +641,7 @@ bool AssemblyWidget::isMeshExtensionSupported(const QString &extension) const
 
 void AssemblyWidget::setBrickLimit(BrickSize size, int value)
 {
-  LegoCloudNode* legoCloudNode = plugin_.getFirstSelectedLegoCloudNode();
+  LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
   if(!legoCloudNode)
     return;
 

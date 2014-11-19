@@ -46,6 +46,11 @@ struct Vector3
         return Vector3(*this) *= f;
     }
 
+    Vector3 operator/(float f) const
+    {
+        return Vector3(*this) /= f;
+    }
+
 
     Vector3 &operator+=(const Vector3 &p)
     {
@@ -71,10 +76,38 @@ struct Vector3
         return *this;
     }
 
+    Vector3 &operator/=(float f)
+    {
+        x() /= f;
+        y() /= f;
+        z() /= f;
+        return *this;
+    }
+
+    float norm() const
+    {
+        return sqrt(x() * x() + y() * y() + z() * z());
+    }
+
+    float squaredNorm() const
+    {
+        return x() * x() + y() * y() + z() * z();
+    }
+
     Vector3 normalize() const
     {
-        float r = 1. / sqrt(x() * x() + y() * y() + z() * z());
+        float r = 1. /  norm();
         return Vector3(x() * r, y() * r, z() * r);
+    }
+
+    Vector3 min(Vector3 a)
+    {
+      return Vector3(std::min(x(),a.x()), std::min(y(),a.y()), std::min(z(),a.z()));
+    }
+
+    Vector3 max(Vector3 a)
+    {
+      return Vector3(std::max(x(),a.x()), std::max(y(),a.y()), std::max(z(),a.z()));
     }
 
     float *data() { return data_; }

@@ -14,7 +14,7 @@
 #define AUTO_OPTIMIZE_MAX_STEPS 50
 
 AssemblyPlugin::AssemblyPlugin()
-  : assemblyWidget_(new AssemblyWidget(*this)){
+  : assemblyWidget_(0) {
 }
 
 AssemblyPlugin::~AssemblyPlugin()
@@ -31,32 +31,33 @@ void AssemblyPlugin::test(int x, int y, int z)
     return;
   }
 
-  LegoCloudNode* legoCloudNode = new LegoCloudNode();
+  legoCloudNode_ = std::make_shared<LegoCloudNode>();
 
   int height = y;
   int width = x;
   int depth = z;
 
-  legoCloudNode->getLegoCloud()->setVoxelGridDimmension(height, width, depth);
+  legoCloudNode_->getLegoCloud()->setVoxelGridDimmension(height, width, depth);
   for(int level=0; level < height; level++)
   {
     for(int x = 0; x < width; ++x)
     {
       for(int y = 0; y < depth; ++y)
       {
-        LegoBrick* brick = legoCloudNode->getLegoCloud()->addBrick(level, x, y);
-        legoCloudNode->getLegoCloud()->addVoxel(level, x, y, brick);
+        LegoBrick* brick = legoCloudNode_->getLegoCloud()->addBrick(level, x, y);
+        legoCloudNode_->getLegoCloud()->addVoxel(level, x, y, brick);
       }
     }
   }
 
-  legoCloudNode->getLegoCloud()->buildNeighbourhood();
+  legoCloudNode_->getLegoCloud()->buildNeighbourhood();
 
-  legoCloudNode->nodeUpdated();
+  legoCloudNode_->nodeUpdated();
 
-//  resetExaminerToBoundingSphere();
+  emit geometryChanged();
 
-  assemblyWidget_->setMaxLayerSpinBox( legoCloudNode->getLegoCloud()->getLevelNumber());
+  if (assemblyWidget_)
+    assemblyWidget_->setMaxLayerSpinBox( legoCloudNode_->getLegoCloud()->getLevelNumber());
 }
 
 void AssemblyPlugin::loadVoxelization(QString filename)
@@ -65,18 +66,19 @@ void AssemblyPlugin::loadVoxelization(QString filename)
   if(filename == NULL)
     return;
 
-  LegoCloudNode* legoCloudNode = new LegoCloudNode();
+  legoCloudNode_ = std::make_shared<LegoCloudNode>();
 
 
   std::cout << "Opening file: " << qPrintable(filename) << std::endl;
-  parseBinvox(filename.toStdString(), legoCloudNode);
-  legoCloudNode->getLegoCloud()->buildNeighbourhood();
+  parseBinvox(filename.toStdString(), legoCloudNode_.get());
+  legoCloudNode_->getLegoCloud()->buildNeighbourhood();
 
-  legoCloudNode->nodeUpdated();
+  legoCloudNode_->nodeUpdated();
 
-//  resetExaminerToBoundingSphere();
+  emit geometryChanged();
 
-  assemblyWidget_->setMaxLayerSpinBox(legoCloudNode->getLegoCloud()->getLevelNumber());
+  if (assemblyWidget_)
+    assemblyWidget_->setMaxLayerSpinBox(legoCloudNode_->getLegoCloud()->getLevelNumber());
 }
 
 /*
@@ -143,7 +145,7 @@ void AssemblyPlugin::loadTexture(QString fileName)
   Dolphin::gui::OpenMeshNodeTextureDialog::loadTextureToObject(oMeshNode, opmn);
 
 
-  LegoCloudNode* legoCloudNode = getFirstSelectedLegoCloudNode(true);
+  LegoCloudNode* legoCloudNode = getLegoCloudNode(true);
   legoCloudNode->getLegoCloud()->loadColors(oMeshNode);
 }
 
@@ -265,26 +267,12 @@ bool AssemblyPlugin::parseBinvox(const std::string& filename, LegoCloudNode* leg
   return true;
 }
 
-LegoCloudNode *AssemblyPlugin::getFirstSelectedLegoCloudNode(bool debug)
-{
-  // TODO
-  LegoCloudNode *legoCloudNode = new LegoCloudNode();
-  if( !legoCloudNode )
-  {
-    if(debug)
-      std::cerr << "AssemblyPlugin: No lego cloud selected." << std::endl;
-    return NULL;
-  }
-  return legoCloudNode;
-}
-
 QPair<float, QPair<int, int> > AssemblyPlugin::autoOptimize()
 {
-  LegoCloudNode* legoCloudNode = getFirstSelectedLegoCloudNode();
-  if(!legoCloudNode)
+  if(!legoCloudNode_)
     return QPair<float, QPair<int, int> >();
 
-  LegoCloud* legoCloud = legoCloudNode->getLegoCloud();
+  LegoCloud* legoCloud = legoCloudNode_->getLegoCloud();
 
 //  progress::setNumberOfSteps(AUTO_OPTIMIZE_MAX_STEPS, "Optimizing...");
 //  progress::setProgress(0);
@@ -355,7 +343,7 @@ QPair<float, QPair<int, int> > AssemblyPlugin::autoOptimize()
   badArtPointNumber = legoCloud->getBadArtPointNumber();
 //  progress::finish();
 
-  legoCloudNode->nodeUpdated();
+  legoCloudNode_->nodeUpdated();
 
   std::cout << "Optimization ended; results:" << std::endl;
 
@@ -384,5 +372,13 @@ QPair<float, QPair<int, int> > AssemblyPlugin::autoOptimize()
   std::cout << "Time: " << time.elapsed()/1000.0 << " seconds." << std::endl;
 
   return QPair<float, QPair<int, int> >(time.elapsed()/1000.0, QPair<int, int>(totalConCompIter, totalArtPointIter));
+}
+
+void AssemblyPlugin::draw()
+{
+  if (legoCloudNode_) {
+//    std::cout << legoCloudNode_->minPoint() << "; " << legoCloudNode_->maxPoint() << std::endl;
+    legoCloudNode_->render();
+  }
 }
 

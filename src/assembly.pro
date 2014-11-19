@@ -3,30 +3,35 @@
 ######################################################################
 
 TEMPLATE = app
-TARGET = openglscene
+TARGET = Assembly
 DEPENDPATH += .
 INCLUDEPATH += .
 
 # Input
-HEADERS += openglscene.h model.h \
-    Vector3.h \
-    AssemblyPlugin.h \
+HEADERS += \
+    LegoDimensions.h \
     AssemblyWidget.h \
+    AssemblyPlugin.h \
     LegoBrick.h \
     LegoCloud.h \
     LegoCloudNode.h \
-    LegoDimensions.h \
-    LegoGraph.h
-SOURCES += main.cpp model.cpp openglscene.cpp \
+    LegoGraph.h \
+    model.h \
+    openglscene.h \
+    Vector3.h
+SOURCES += \
     AssemblyPlugin.cpp \
     AssemblyWidget.cpp \
     LegoCloud.cpp \
-    LegoCloudNode.cpp
+    LegoCloudNode.cpp \
+    main.cpp \
+    model.cpp \
+    openglscene.cpp
 
 QT += opengl widgets svg
 
 FORMS += \
-    AssemblyWidget.ui
+    ../forms/AssemblyWidget.ui
 
 INCLUDEPATH += /usr/local/include
 DEPENDPATH += /usr/local/lib
@@ -37,14 +42,28 @@ contains( QT_VERSION, "^5.*" ) {
   cache()
 }
 
-OTHER_FILES += ../Resources/builder.icns
+OTHER_FILES += \
+    ../resources/builder.icns
+
+DESTDIR = .
+
+
+OBJECTS_DIR = $${DESTDIR}/obj
+MOC_DIR = $${DESTDIR}/moc
+RCC_DIR = $${DESTDIR}/rcc
+UI_DIR = $${DESTDIR}/ui
 
 win32{
     DEFINES += NOMINMAX
 }
 
 macx{
-    ICON = $${PWD}/../Resources/builder.icns
+    ICON = $${PWD}/../resources/builder.icns
+    OTHER_FILES = ../binvox/macx/binvox
+
+    BINVOX_FILES.files =  $${PWD}/../binvox/macx/binvox
+    BINVOX_FILES.path = Contents/Resources
+    QMAKE_BUNDLE_DATA += BINVOX_FILES
 
     CONFIG(release, debug|release) {
         QMAKE_CXXFLAGS += -O3

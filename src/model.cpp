@@ -7,7 +7,7 @@
 #include <QtOpenGL>
 
 Model::Model(const QString &filePath)
-    : m_fileName(QFileInfo(filePath).fileName())
+    : QObject(), m_fileName(QFileInfo(filePath).fileName())
 {
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly))
@@ -61,10 +61,13 @@ Model::Model(const QString &filePath)
         }
     }
 
-    const Vector3 bounds = boundsMax - boundsMin;
-    const qreal scale = 1 / qMax(bounds.x(), qMax(bounds.y(), bounds.z()));
-    for (int i = 0; i < m_points.size(); ++i)
-        m_points[i] = (m_points[i] - (boundsMin + bounds * 0.5)) * scale;
+    boundsMax_ = boundsMax;
+    boundsMin_ = boundsMin;
+
+//    const Vector3 bounds = boundsMax - boundsMin;
+//    const qreal scale = 1 / qMax(bounds.x(), qMax(bounds.y(), bounds.z()));
+//    for (int i = 0; i < m_points.size(); ++i)
+//        m_points[i] = (m_points[i] - (boundsMin + bounds * 0.5)) * scale;
 
     m_normals.resize(m_points.size());
     for (int i = 0; i < m_pointIndices.size(); i += 3) {
@@ -80,6 +83,8 @@ Model::Model(const QString &filePath)
 
     for (int i = 0; i < m_normals.size(); ++i)
         m_normals[i] = m_normals[i].normalize();
+
+    emit geometryChanged();
 }
 
 void Model::render(bool wireframe, bool normals) const

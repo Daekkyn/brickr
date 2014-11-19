@@ -53,11 +53,13 @@ public:
   inline void setRenderGraph(bool v){renderGraph_ = v;}
   inline void setColorRendering(ColorRendering col){colorRendering_ = col;}
 
-  void nodeUpdated() { drawDirty_ = true; }
+  void nodeUpdated() { drawDirty_ = true; recomputeAABB(); }
 
   void drawInstructions(QGraphicsScene* scene, bool hintLayerBelow);
   void exportToObj(QString filename);
 
+  Vector3 minPoint() { return boundsMin_; }
+  Vector3 maxPoint() { return boundsMax_; }
 
 private:
   void drawLegoBrick(const LegoBrick& brick) const;
@@ -68,7 +70,7 @@ private:
   void drawLegoGraph(const LegoGraph& graph) const;
   void setColor(const LegoGraph::vertex_descriptor &vertex) const;
 
-  Vector3 minPoint, maxPoint;
+  Vector3 boundsMin_, boundsMax_;
 
   LegoCloud* legoCloud_;
   bool renderLayerByLayer_;

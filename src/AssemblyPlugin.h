@@ -25,15 +25,22 @@ public:
   void loadObj(QString fileName);
   void loadTexture(QString fileName);
   void removeAllMeshes();
+  void setWidget(AssemblyWidget *widget) { assemblyWidget_ = widget; }
 
-  LegoCloudNode* getFirstSelectedLegoCloudNode(bool debug = true);
+  LegoCloudNode* getLegoCloudNode() { return legoCloudNode_.get(); }
 
   QPair<float, QPair<int, int> > autoOptimize();
 
-private:
-  bool parseBinvox(const std::string& filename, LegoCloudNode *legoCloudNode);
+  void draw();
 
-  std::auto_ptr<AssemblyWidget> assemblyWidget_;
+signals:
+  void geometryChanged();
+
+private:
+  bool parseBinvox(const std::string& filename, LegoCloudNode *legoCloudNode_);
+
+  AssemblyWidget *assemblyWidget_;
+  std::shared_ptr<LegoCloudNode> legoCloudNode_;
 };
 
 

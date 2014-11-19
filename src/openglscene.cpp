@@ -1,9 +1,13 @@
 #include "openglscene.h"
 #include "model.h"
+#include "LegoCloudNode.h"
+#include "AssemblyWidget.h"
+#include "AssemblyPlugin.h"
 
 #include <QtGui>
 #include <QtOpenGL>
 #include <glu.h>
+#include <QSettings>
 
 #define QT_NO_CONCURRENT
 
@@ -15,7 +19,7 @@ QDialog *OpenGLScene::createDialog(const QString &windowTitle) const
 {
     QDialog *dialog = new QDialog(0, Qt::CustomizeWindowHint | Qt::WindowTitleHint);
 
-    dialog->setWindowOpacity(0.8);
+    dialog->setWindowOpacity(0.95);
     dialog->setWindowTitle(windowTitle);
     dialog->setLayout(new QVBoxLayout);
 
@@ -60,16 +64,25 @@ OpenGLScene::OpenGLScene()
     QWidget *statistics = createDialog(tr("Model info"));
     statistics->layout()->setMargin(20);
 
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 3; ++i) {
         m_labels[i] = new QLabel;
         statistics->layout()->addWidget(m_labels[i]);
     }
 
+    /*
     QWidget *instructions = createDialog(tr("Instructions"));
     instructions->layout()->addWidget(new QLabel(tr("Use mouse wheel to zoom model, and click and drag to rotate model")));
     instructions->layout()->addWidget(new QLabel(tr("Move the sun around to change the light position")));
+    */
 
-    QWidget *widgets[] = { instructions, controls, statistics };
+    m_plugin = std::make_shared<AssemblyPlugin>();
+    connect(m_plugin.get(), SIGNAL(geometryChanged()), this, SLOT(resetScene()));
+
+    QWidget *assembly = createDialog(tr("Assembly"));
+    m_assembly = new AssemblyWidget(m_plugin);
+    assembly->layout()->addWidget(m_assembly);
+
+    QWidget *widgets[] = { assembly, /*instructions, controls, statistics*/ };
 
     for (uint i = 0; i < sizeof(widgets) / sizeof(*widgets); ++i) {
         QGraphicsProxyWidget *proxy = new QGraphicsProxyWidget(0, Qt::Dialog);
@@ -98,7 +111,7 @@ OpenGLScene::OpenGLScene()
     m_lightItem->setPos(800, 200);
     addItem(m_lightItem);
 
-    loadModel(QLatin1String("qt.obj"));
+    resetScene();
     m_time.start();
 }
 
@@ -116,52 +129,66 @@ void OpenGLScene::drawBackground(QPainter *painter, const QRectF &)
     glClearColor(m_backgroundColor.redF(), m_backgroundColor.greenF(), m_backgroundColor.blueF(), 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    if (m_model) {
-        glMatrixMode(GL_PROJECTION);
-        glPushMatrix();
-        glLoadIdentity();
-        gluPerspective(70, width() / height(), 0.01, 1000);
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    gluPerspective(70, width() / height(), 0.01, 1000);
 
-        glMatrixMode(GL_MODELVIEW);
-        glPushMatrix();
-        glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
 
-        const float pos[] = { m_lightItem->x() - width() / 2, height() / 2 - m_lightItem->y(), 512, 0 };
-        glLightfv(GL_LIGHT0, GL_POSITION, pos);
-        glColor4f(m_modelColor.redF(), m_modelColor.greenF(), m_modelColor.blueF(), 1.0f);
+    float w = m_lightItem->x() - width() / 2;
+    float h = height() / 2 - m_lightItem->y();
+    const float pos[] = { w, h, 512, 0 };
+    glLightfv(GL_LIGHT0, GL_POSITION, pos);
+    glColor4f(m_modelColor.redF(), m_modelColor.greenF(), m_modelColor.blueF(), 1.0f);
 
-        const int delta = m_time.elapsed() - m_lastTime;
-        m_rotation += m_angularMomentum * (delta / 1000.0);
-        m_lastTime += delta;
+    const int delta = m_time.elapsed() - m_lastTime;
+    m_rotation += m_angularMomentum * (delta / 1000.0);
+    m_lastTime += delta;
 
-        glTranslatef(0, 0, -m_distance);
-        glRotatef(m_rotation.x(), 1, 0, 0);
-        glRotatef(m_rotation.y(), 0, 1, 0);
-        glRotatef(m_rotation.z(), 0, 0, 1);
+    glTranslatef(0, 0, -m_distance);
+    glRotatef(m_rotation.x(), 1, 0, 0);
+    glRotatef(m_rotation.y(), 0, 1, 0);
+    glRotatef(m_rotation.z(), 0, 0, 1);
 
-        glEnable(GL_MULTISAMPLE);
-        m_model->render(m_wireframeEnabled, m_normalsEnabled);
-        glDisable(GL_MULTISAMPLE);
+    glScalef(m_scale, m_scale, m_scale);
+    glTranslatef(m_translation.x(), m_translation.y(), m_translation.z());
 
-        glPopMatrix();
+    glEnable(GL_MULTISAMPLE);
 
-        glMatrixMode(GL_PROJECTION);
-        glPopMatrix();
-    }
+    m_plugin->draw();
+
+    if (m_model)
+      m_model->render(m_wireframeEnabled, m_normalsEnabled);
+
+    glDisable(GL_MULTISAMPLE);
+
+    glPopMatrix();
+
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
 
     painter->endNativePainting();
 
     QTimer::singleShot(20, this, SLOT(update()));
 }
 
-static Model *loadModel(const QString &filePath)
+static std::shared_ptr<Model> loadModel(const QString &filePath)
 {
-    return new Model(filePath);
+    return std::make_shared<Model>(filePath);
 }
 
 void OpenGLScene::loadModel()
 {
-    loadModel(QFileDialog::getOpenFileName(0, tr("Choose model"), QString(), QLatin1String("*.obj")));
+  QSettings settings;
+  QString lastOpenedFile = settings.value("OpenGLScene::LoadModel", "").toString();
+
+  QString selectedFilePath = QFileDialog::getOpenFileName(0, tr("Choose model"), lastOpenedFile, QLatin1String("*.obj"));
+  loadModel(selectedFilePath);
+
+  settings.setValue("OpenGLScene::LoadModel", selectedFilePath);
 }
 
 void OpenGLScene::loadModel(const QString &filePath)
@@ -188,17 +215,46 @@ void OpenGLScene::modelLoaded()
     QApplication::restoreOverrideCursor();
 }
 
-void OpenGLScene::setModel(Model *model)
+void OpenGLScene::setModel(std::shared_ptr<Model> model)
 {
-    delete m_model;
     m_model = model;
+    connect(m_model.get(), SIGNAL(geometryChanged()), this, SLOT(resetScene()));
 
     m_labels[0]->setText(tr("File: %0").arg(m_model->fileName()));
-    m_labels[1]->setText(tr("Points: %0").arg(m_model->points()));
-    m_labels[2]->setText(tr("Edges: %0").arg(m_model->edges()));
-    m_labels[3]->setText(tr("Faces: %0").arg(m_model->faces()));
+    m_labels[1]->setText(tr("Points: %0 Edges : %1 Faces: %2").arg(m_model->points()).arg(m_model->edges()).arg(m_model->faces()));
+    m_labels[2]->setText(tr("Bounds: (%0 %1 %2), (%3 %4 %5)")
+                         .arg(m_model->minPoint().x()).arg(m_model->minPoint().y()).arg(m_model->minPoint().z())
+                         .arg(m_model->maxPoint().x()).arg(m_model->maxPoint().y()).arg(m_model->maxPoint().z()));
 
+    resetScene();
     update();
+}
+
+void OpenGLScene::resetScene()
+{
+  Vector3 boundsMin(0.0,0.0,0.0);
+  Vector3 boundsMax(0.0,0.0,0.0);
+
+  if (m_model)
+  {
+    boundsMin = boundsMin.min(m_model->minPoint());
+    boundsMax = boundsMin.max(m_model->maxPoint());
+  }
+
+  if (m_plugin->getLegoCloudNode())
+  {
+    boundsMin = boundsMin.min(m_plugin->getLegoCloudNode()->minPoint());
+    boundsMax = boundsMin.max(m_plugin->getLegoCloudNode()->maxPoint());
+  }
+
+  m_translation = (boundsMin + boundsMax) / -2.0;
+
+  float norm = (boundsMax - boundsMin).norm();
+
+  if (norm < std::numeric_limits<float>::epsilon())
+    m_scale = 1.0;
+  else
+    m_scale = 1.0/norm;
 }
 
 void OpenGLScene::enableWireframe(bool enabled)

@@ -31,7 +31,7 @@ int main(int argc, char **argv)
     view.setScene(new OpenGLScene);
     view.show();
 
-    view.resize(1024, 768);
+    view.resize(1280, 1024);
 
     return app.exec();
 }

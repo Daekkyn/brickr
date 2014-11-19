@@ -12,6 +12,9 @@
 #endif
 
 class Model;
+class LegoCloudNode;
+class AssemblyPlugin;
+class AssemblyWidget;
 
 class OpenGLScene : public QGraphicsScene
 {
@@ -30,6 +33,7 @@ public slots:
     void loadModel();
     void loadModel(const QString &filePath);
     void modelLoaded();
+    void resetScene();
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event);
@@ -40,7 +44,7 @@ protected:
 private:
     QDialog *createDialog(const QString &windowTitle) const;
 
-    void setModel(Model *model);
+    void setModel(std::shared_ptr<Model> model);
 
     bool m_wireframeEnabled;
     bool m_normalsEnabled;
@@ -48,19 +52,24 @@ private:
     QColor m_modelColor;
     QColor m_backgroundColor;
 
-    Model *m_model;
+    std::shared_ptr<Model> m_model;
 
     QTime m_time;
     int m_lastTime;
     int m_mouseEventTime;
 
     float m_distance;
+    float m_scale;
+    Vector3 m_translation;
     Vector3 m_rotation;
     Vector3 m_angularMomentum;
     Vector3 m_accumulatedMomentum;
 
     QLabel *m_labels[4];
     QWidget *m_modelButton;
+
+    AssemblyWidget *m_assembly;
+    std::shared_ptr<AssemblyPlugin> m_plugin;
 
     QGraphicsRectItem *m_lightItem;
 

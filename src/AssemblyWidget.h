@@ -13,7 +13,7 @@ class AssemblyWidget: public QWidget, private Ui_AssemblyWidget {
 
 public:
 
-  AssemblyWidget(AssemblyPlugin& _plugin, QWidget* _parent=0);
+  explicit AssemblyWidget(std::shared_ptr<AssemblyPlugin> _plugin, QWidget* _parent=0);
   ~AssemblyWidget();
 
   void setMaxLayerSpinBox(int max);
@@ -71,9 +71,7 @@ private:
   void loadFile(const QString& filePath, int voxelizationResolution = 0);
   bool isMeshExtensionSupported(const QString& extension) const;
 
-
-  AssemblyPlugin& plugin_;
-
+  std::shared_ptr<AssemblyPlugin> plugin_;
 };
 
 #endif

@@ -54,8 +54,8 @@ void LegoCloudNode::recomputeAABB()
     }
   }
 
-  minPoint = Vector3(minX*LEGO_KNOB_DISTANCE, minLevel*LEGO_HEIGHT, minY*LEGO_KNOB_DISTANCE);
-  maxPoint = Vector3(maxX*LEGO_KNOB_DISTANCE, maxLevel*LEGO_HEIGHT, maxY*LEGO_KNOB_DISTANCE);
+  boundsMin_ = Vector3(minX*LEGO_KNOB_DISTANCE, minLevel*LEGO_HEIGHT, minY*LEGO_KNOB_DISTANCE);
+  boundsMax_ = Vector3(maxX*LEGO_KNOB_DISTANCE, maxLevel*LEGO_HEIGHT, maxY*LEGO_KNOB_DISTANCE);
 }
 
 void LegoCloudNode::render()
@@ -68,28 +68,38 @@ void LegoCloudNode::render()
   glLineWidth(getDefaultMaterial()->getEdgeWidth());
   glPointSize(getDefaultMaterial()->getVertexRadius());*/
 
-  glEnable(GL_CULL_FACE);
-  glCullFace(GL_BACK);
+//  glPushAttrib(GL_CULL_FACE | GL_POLYGON_MODE | GL_LINE_SMOOTH | GL_BLEND);
+//  glEnable(GL_CULL_FACE);
+//  glCullFace(GL_BACK);
 
-  //glDisable(GL_LIGHTING);
+//  glDisable(GL_LIGHTING);
 
-  glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+//  glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
   //glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
 
+  /*
   glEnable(GL_LINE_SMOOTH);
   glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);                 // Set Line Antialiasing
   glEnable(GL_BLEND);                         // Enable Blending
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  */
+
+
+  glEnable(GL_DEPTH_TEST);
+  glEnable(GL_LIGHTING);
+  glEnable(GL_LIGHT0);
+  glEnable(GL_COLOR_MATERIAL);
+  glShadeModel(GL_SMOOTH);
 
   const LegoGraph& graph = legoCloud_->getLegoGraph();
 
   if(renderBricks_)
   {
-
     //glEnable(GL_LIGHTING);
 
-    glEnable(GL_POLYGON_OFFSET_FILL);
-    glPolygonOffset(1.0, 1.0);
+//    glPushAttrib(GL_POLYGON_OFFSET_FILL);
+//    glEnable(GL_POLYGON_OFFSET_FILL);
+//    glPolygonOffset(1.0, 1.0);
 
     LegoGraph::vertex_iterator vertexIt, vertexItEnd;
     for (boost::tie(vertexIt, vertexItEnd) = boost::vertices(graph); vertexIt != vertexItEnd; ++vertexIt)
@@ -114,12 +124,26 @@ void LegoCloudNode::render()
         //drawNeighbourhood(*brick, legoCloud_->getNeighbours(brick));
       }
     }
+//    glPopAttrib();
   }
 
   drawDirty_ = false;
 
+  glDisableClientState(GL_NORMAL_ARRAY);
+  glDisable(GL_COLOR_MATERIAL);
+  glDisable(GL_LIGHT0);
+  glDisable(GL_LIGHTING);
+
+  glDisableClientState(GL_VERTEX_ARRAY);
+  glDisable(GL_DEPTH_TEST);
+
   if(renderGraph_)
     drawLegoGraph(graph);
+
+//  glDisable(GL_LINE_SMOOTH);
+//  glDisable(GL_BLEND);
+//  glDisable(GL_CULL_FACE);
+  glPopAttrib();
 }
 
 
@@ -140,7 +164,6 @@ void LegoCloudNode::drawLegoBrick(const LegoBrick &brick) const
   drawBox(p1, p2);
 
   drawKnobs(brick, p1);
-
 }
 
 void LegoCloudNode::drawBox(const Vector3 &p1, const Vector3 &p2) const
@@ -351,6 +374,7 @@ void LegoCloudNode::drawLegoGraph(const LegoGraph & graph) const
 {
   //Draw vertices
 
+  glPushAttrib(GL_LIGHTING);
   glDisable(GL_LIGHTING);
   glBegin(GL_POINTS);
   LegoGraph::vertex_iterator vertexIt, vertexItEnd;
@@ -402,6 +426,8 @@ void LegoCloudNode::drawLegoGraph(const LegoGraph & graph) const
 
   }
   glEnd();
+
+  glPopAttrib();
 }
 
 void LegoCloudNode::setColor(const LegoGraph::vertex_descriptor& vertex) const
