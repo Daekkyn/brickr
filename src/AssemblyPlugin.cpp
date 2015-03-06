@@ -90,7 +90,7 @@ void AssemblyPlugin::loadObj(QString fileName)
   openMeshNode->setVisible(false,false);
   openMeshNode->setSelected(false,false);
 
-  //*** Scale the mesh to the same size as the legoCloud
+  // *** Scale the mesh to the same size as the legoCloud
   typedef Dolphin::defines::Vector3 Vector3;
   Vector3 minLego = legoCloudNode->getAABB()->getMin();
   Vector3 maxLego = legoCloudNode->getAABB()->getMax();
@@ -107,7 +107,7 @@ void AssemblyPlugin::loadObj(QString fileName)
                     ((maxLego.x()-minLego.x())/(maxMesh.x()-minMesh.x())) //Scale
                     + (minLego+maxLego)/2.0); //Translate on Legos
   }
-  //***
+  *** //
 
   mesh->update_face_normals();
 
@@ -174,7 +174,7 @@ bool AssemblyPlugin::parseBinvox(const std::string& filename, LegoCloudNode* leg
   int depth, width, height;
 
   std::ifstream input;
-  input.open(filename.c_str());
+  input.open(filename.c_str(),std::ios::binary);
   if (!input.is_open())
     return false;
 
@@ -241,21 +241,19 @@ bool AssemblyPlugin::parseBinvox(const std::string& filename, LegoCloudNode* leg
 
     if (input.good()) {
       end_index = index + count;
-      if (end_index > size) return false;
-      for(int i=index; i < end_index; i++) {
-        if(value == 1)
-        {
-          int level = (i%(width*height))%height;
-          int y = ((i-level)%(width*height))/height;
-          int x = (i - level - y*height)/(width*height);
-          LegoBrick* brick = legoCloudNode->getLegoCloud()->addBrick(level, x, y);
-          legoCloudNode->getLegoCloud()->addVoxel(level, x, y, brick);
-        } else {
-          //do nothing
-        }
-      }
+      if (end_index > size) { std::cerr << "binvox file invalid." << std::endl; return false; }
 
-      if (value) nr_voxels += count;
+      if (value)
+      {
+          for(int i=index; i < end_index; i++) {
+              int level = (i%(width*height))%height;
+              int y = ((i-level)%(width*height))/height;
+              int x = (i - level - y*height)/(width*height);
+              LegoBrick* brick = legoCloudNode->getLegoCloud()->addBrick(level, x, y);
+              legoCloudNode->getLegoCloud()->addVoxel(level, x, y, brick);
+          }
+          nr_voxels += count;
+      }
       index = end_index;
     }  // if file still ok
 

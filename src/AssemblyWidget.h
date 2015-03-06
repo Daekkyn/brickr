@@ -1,6 +1,7 @@
 #ifndef ASSEMBLY_WIDGET_H
 #define ASSEMBLY_WIDGET_H
 
+#include <memory>
 #include <QWidget>
 #include "ui_AssemblyWidget.h"
 
@@ -13,7 +14,7 @@ class AssemblyWidget: public QWidget, private Ui_AssemblyWidget {
 
 public:
 
-  explicit AssemblyWidget(std::shared_ptr<AssemblyPlugin> _plugin, QWidget* _parent=0);
+  explicit AssemblyWidget(AssemblyPlugin* _plugin, QWidget* _parent=0);
   ~AssemblyWidget();
 
   void setMaxLayerSpinBox(int max);
@@ -22,7 +23,7 @@ private slots:
   void on_testButton_pressed();
   void on_layerSpinBox_valueChanged(int _value);
   void on_loadFileButton_pressed();
-  void on_loadTextureButton_pressed();
+//  void on_loadTextureButton_pressed();
   void on_mergeButton_pressed();
   void on_layerBox_stateChanged(int state);
 
@@ -70,8 +71,9 @@ private:
   void resetUi();
   void loadFile(const QString& filePath, int voxelizationResolution = 0);
   bool isMeshExtensionSupported(const QString& extension) const;
+  void scaleMesh(const QString &filePath, const QString &scaledFilePath);
 
-  std::shared_ptr<AssemblyPlugin> plugin_;
+  AssemblyPlugin *plugin_;
 };
 
 #endif

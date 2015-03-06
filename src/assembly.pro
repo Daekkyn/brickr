@@ -3,7 +3,7 @@
 ######################################################################
 
 TEMPLATE = app
-TARGET = Assembly
+TARGET = Brickr
 DEPENDPATH += .
 INCLUDEPATH += .
 
@@ -18,7 +18,8 @@ HEADERS += \
     LegoGraph.h \
     model.h \
     openglscene.h \
-    Vector3.h
+    Vector3.h \
+    QDebugStream.h
 SOURCES += \
     AssemblyPlugin.cpp \
     AssemblyWidget.cpp \
@@ -42,9 +43,6 @@ contains( QT_VERSION, "^5.*" ) {
   cache()
 }
 
-OTHER_FILES += \
-    ../resources/builder.icns
-
 DESTDIR = .
 
 
@@ -55,6 +53,17 @@ UI_DIR = $${DESTDIR}/ui
 
 win32{
     DEFINES += NOMINMAX
+    RC_FILE = $${PWD}/../resources/lego.rc
+    OTHER_FILES += ../resources/builder.ico \
+        ../resources/lego.rc
+
+# include boost, replace this with your boost paths and library locations
+    BOOST_DIR = C:\local\boost_1_55_0
+    INCLUDEPATH += $${BOOST_DIR}
+    LIBS += -L$${BOOST_DIR}\lib64-msvc-12.0 \
+            -lboost_graph-vc120-mt-1_55
+
+    OTHER_FILES = ../binvox/win64/binvox
 }
 
 macx{

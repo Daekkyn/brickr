@@ -3,11 +3,18 @@
 #include "LegoCloudNode.h"
 #include "AssemblyWidget.h"
 #include "AssemblyPlugin.h"
+#include "QDebugStream.h"
 
 #include <QtGui>
 #include <QtOpenGL>
-#include <glu.h>
 #include <QSettings>
+
+#ifdef WIN32
+#include <windows.h>
+#include <gl/GLU.h>
+#else
+#include <glu.h>
+#endif
 
 #define QT_NO_CONCURRENT
 
@@ -26,63 +33,46 @@ QDialog *OpenGLScene::createDialog(const QString &windowTitle) const
     return dialog;
 }
 
-OpenGLScene::OpenGLScene()
-    : m_wireframeEnabled(false)
-    , m_normalsEnabled(false)
-    , m_modelColor(153, 255, 0)
-    , m_backgroundColor(0, 170, 255)
-    , m_model(0)
-    , m_lastTime(0)
+OpenGLScene::OpenGLScene(int width, int height)
+    : m_backgroundColor(180, 225, 255)
     , m_distance(1.4f)
-    , m_angularMomentum(0, 40, 0)
 {
-    QWidget *controls = createDialog(tr("Controls"));
-
-    m_modelButton = new QPushButton(tr("Load model"));
-    connect(m_modelButton, SIGNAL(clicked()), this, SLOT(loadModel()));
-#ifndef QT_NO_CONCURRENT
-    connect(&m_modelLoader, SIGNAL(finished()), this, SLOT(modelLoaded()));
-#endif
-    controls->layout()->addWidget(m_modelButton);
-
-    QCheckBox *wireframe = new QCheckBox(tr("Render as wireframe"));
-    connect(wireframe, SIGNAL(toggled(bool)), this, SLOT(enableWireframe(bool)));
-    controls->layout()->addWidget(wireframe);
-
-    QCheckBox *normals = new QCheckBox(tr("Display normals vectors"));
-    connect(normals, SIGNAL(toggled(bool)), this, SLOT(enableNormals(bool)));
-    controls->layout()->addWidget(normals);
-
-    QPushButton *colorButton = new QPushButton(tr("Choose model color"));
-    connect(colorButton, SIGNAL(clicked()), this, SLOT(setModelColor()));
-    controls->layout()->addWidget(colorButton);
-
-    QPushButton *backgroundButton = new QPushButton(tr("Choose background color"));
-    connect(backgroundButton, SIGNAL(clicked()), this, SLOT(setBackgroundColor()));
-    controls->layout()->addWidget(backgroundButton);
-
-    QWidget *statistics = createDialog(tr("Model info"));
-    statistics->layout()->setMargin(20);
-
-    for (int i = 0; i < 3; ++i) {
-        m_labels[i] = new QLabel;
-        statistics->layout()->addWidget(m_labels[i]);
-    }
-
-    /*
-    QWidget *instructions = createDialog(tr("Instructions"));
-    instructions->layout()->addWidget(new QLabel(tr("Use mouse wheel to zoom model, and click and drag to rotate model")));
-    instructions->layout()->addWidget(new QLabel(tr("Move the sun around to change the light position")));
-    */
-
-    m_plugin = std::make_shared<AssemblyPlugin>();
+    m_plugin = std::auto_ptr<AssemblyPlugin>(new AssemblyPlugin);
     connect(m_plugin.get(), SIGNAL(geometryChanged()), this, SLOT(resetScene()));
 
-    QWidget *assembly = createDialog(tr("Assembly"));
-    m_assembly = new AssemblyWidget(m_plugin);
+    QWidget *assembly = createDialog(tr("Brickr"));
+    m_assembly = new AssemblyWidget(m_plugin.get());
     assembly->layout()->addWidget(m_assembly);
 
-    QWidget *widgets[] = { assembly, /*instructions, controls, statistics*/ };
+    QWidget *console = createDialog(tr("Console"));
+    QTextEdit *consoleEdit = new QTextEdit();
+    console->layout()->setMargin(0);
+    consoleEdit->setMinimumSize(580,200);
+    consoleEdit->setReadOnly(true);
+    console->layout()->addWidget(consoleEdit);
+
+    QWidget *info = createDialog(tr("About"));
+    QLabel *infoLabel = new QLabel;
+    infoLabel->setText("Automatic Generation of Constructable Brick Sculptures\n© 2013-2015 Romain Testuz and Yuliy Schwartzburg\nDetails at http://lgg.epfl.ch/publications/2013/lego.php\nContact: romain.testuz@rayform.ch");
+    info->layout()->addWidget(infoLabel);
+
+    debugStreamOut_ = std::unique_ptr<QDebugStream>(new QDebugStream(consoleEdit));
+#ifdef WIN32
+    std::cout.rdbuf(debugStreamOut_.get());
+#else
+    teebufOut_ = std::unique_ptr<teebuf>(new teebuf(std::cout.rdbuf(), debugStreamOut_.get()));
+    std::cout.rdbuf(teebufOut_.get());
+#endif
+
+    debugStreamErr_ = std::unique_ptr<QDebugStream>(new QDebugStream(consoleEdit));
+#ifdef WIN32
+    std::cerr.rdbuf(debugStreamErr_.get());
+#else
+    teebufErr_ = std::unique_ptr<teebuf>(new teebuf(std::cerr.rdbuf(), debugStreamErr_.get()));
+    std::cerr.rdbuf(teebufErr_.get());
+#endif
+
+    QWidget *widgets[] = { info, console, assembly  }; /*instructions, controls, statistics*/
 
     for (uint i = 0; i < sizeof(widgets) / sizeof(*widgets); ++i) {
         QGraphicsProxyWidget *proxy = new QGraphicsProxyWidget(0, Qt::Dialog);
@@ -90,15 +80,30 @@ OpenGLScene::OpenGLScene()
         addItem(proxy);
     }
 
-    QPointF pos(10, 10);
+    uint i = 0;
     foreach (QGraphicsItem *item, items()) {
-        item->setFlag(QGraphicsItem::ItemIsMovable);
-        item->setCacheMode(QGraphicsItem::DeviceCoordinateCache);
+      item->setFlag(QGraphicsItem::ItemIsMovable);
+      item->setCacheMode(QGraphicsItem::DeviceCoordinateCache);
 
-        const QRectF rect = item->boundingRect();
-        item->setPos(pos.x() - rect.x(), pos.y() - rect.y());
-        pos += QPointF(0, 10 + rect.height());
+      const QRectF rect = item->boundingRect();
+
+      switch (i)
+      {
+      case 0:
+      default:
+          items()[0]->setPos(10-rect.x(),10-rect.y());
+          break;
+      case 1:
+          items()[1]->setPos(width-rect.x()-rect.width()-10, height-rect.y()-rect.height()-10);
+          break;
+      case 2:
+          items()[2]->setPos(width-rect.x()-rect.width()-10, 10-rect.y());
+          break;
+      }
+
+      i++;
     }
+
 
     QRadialGradient gradient(40, 40, 40, 40, 40);
     gradient.setColorAt(0.2, Qt::yellow);
@@ -112,7 +117,14 @@ OpenGLScene::OpenGLScene()
     addItem(m_lightItem);
 
     resetScene();
-    m_time.start();
+}
+
+OpenGLScene::~OpenGLScene()
+{
+#ifndef WIN32
+  std::cout.rdbuf(teebufOut_->sb1());
+  std::cerr.rdbuf(teebufErr_->sb1());
+#endif
 }
 
 void OpenGLScene::drawBackground(QPainter *painter, const QRectF &)
@@ -142,12 +154,8 @@ void OpenGLScene::drawBackground(QPainter *painter, const QRectF &)
     float h = height() / 2 - m_lightItem->y();
     const float pos[] = { w, h, 512, 0 };
     glLightfv(GL_LIGHT0, GL_POSITION, pos);
-    glColor4f(m_modelColor.redF(), m_modelColor.greenF(), m_modelColor.blueF(), 1.0f);
 
-    const int delta = m_time.elapsed() - m_lastTime;
-    m_rotation += m_angularMomentum * (delta / 1000.0);
-    m_lastTime += delta;
-
+    glTranslatef(m_cameraTranslation.x(), m_cameraTranslation.y(), m_cameraTranslation.z());
     glTranslatef(0, 0, -m_distance);
     glRotatef(m_rotation.x(), 1, 0, 0);
     glRotatef(m_rotation.y(), 0, 1, 0);
@@ -160,9 +168,6 @@ void OpenGLScene::drawBackground(QPainter *painter, const QRectF &)
 
     m_plugin->draw();
 
-    if (m_model)
-      m_model->render(m_wireframeEnabled, m_normalsEnabled);
-
     glDisable(GL_MULTISAMPLE);
 
     glPopMatrix();
@@ -172,7 +177,7 @@ void OpenGLScene::drawBackground(QPainter *painter, const QRectF &)
 
     painter->endNativePainting();
 
-    QTimer::singleShot(20, this, SLOT(update()));
+//    QTimer::singleShot(20, this, SLOT(update()));
 }
 
 static std::shared_ptr<Model> loadModel(const QString &filePath)
@@ -180,66 +185,10 @@ static std::shared_ptr<Model> loadModel(const QString &filePath)
     return std::make_shared<Model>(filePath);
 }
 
-void OpenGLScene::loadModel()
-{
-  QSettings settings;
-  QString lastOpenedFile = settings.value("OpenGLScene::LoadModel", "").toString();
-
-  QString selectedFilePath = QFileDialog::getOpenFileName(0, tr("Choose model"), lastOpenedFile, QLatin1String("*.obj"));
-  loadModel(selectedFilePath);
-
-  settings.setValue("OpenGLScene::LoadModel", selectedFilePath);
-}
-
-void OpenGLScene::loadModel(const QString &filePath)
-{
-    if (filePath.isEmpty())
-        return;
-
-    m_modelButton->setEnabled(false);
-    QApplication::setOverrideCursor(Qt::BusyCursor);
-#ifndef QT_NO_CONCURRENT
-    m_modelLoader.setFuture(QtConcurrent::run(::loadModel, filePath));
-#else
-    setModel(::loadModel(filePath));
-    modelLoaded();
-#endif
-}
-
-void OpenGLScene::modelLoaded()
-{
-#ifndef QT_NO_CONCURRENT
-    setModel(m_modelLoader.result());
-#endif
-    m_modelButton->setEnabled(true);
-    QApplication::restoreOverrideCursor();
-}
-
-void OpenGLScene::setModel(std::shared_ptr<Model> model)
-{
-    m_model = model;
-    connect(m_model.get(), SIGNAL(geometryChanged()), this, SLOT(resetScene()));
-
-    m_labels[0]->setText(tr("File: %0").arg(m_model->fileName()));
-    m_labels[1]->setText(tr("Points: %0 Edges : %1 Faces: %2").arg(m_model->points()).arg(m_model->edges()).arg(m_model->faces()));
-    m_labels[2]->setText(tr("Bounds: (%0 %1 %2), (%3 %4 %5)")
-                         .arg(m_model->minPoint().x()).arg(m_model->minPoint().y()).arg(m_model->minPoint().z())
-                         .arg(m_model->maxPoint().x()).arg(m_model->maxPoint().y()).arg(m_model->maxPoint().z()));
-
-    resetScene();
-    update();
-}
-
 void OpenGLScene::resetScene()
 {
   Vector3 boundsMin(0.0,0.0,0.0);
   Vector3 boundsMax(0.0,0.0,0.0);
-
-  if (m_model)
-  {
-    boundsMin = boundsMin.min(m_model->minPoint());
-    boundsMax = boundsMin.max(m_model->maxPoint());
-  }
 
   if (m_plugin->getLegoCloudNode())
   {
@@ -257,36 +206,6 @@ void OpenGLScene::resetScene()
     m_scale = 1.0/norm;
 }
 
-void OpenGLScene::enableWireframe(bool enabled)
-{
-    m_wireframeEnabled = enabled;
-    update();
-}
-
-void OpenGLScene::enableNormals(bool enabled)
-{
-    m_normalsEnabled = enabled;
-    update();
-}
-
-void OpenGLScene::setModelColor()
-{
-    const QColor color = QColorDialog::getColor(m_modelColor);
-    if (color.isValid()) {
-        m_modelColor = color;
-        update();
-    }
-}
-
-void OpenGLScene::setBackgroundColor()
-{
-    const QColor color = QColorDialog::getColor(m_backgroundColor);
-    if (color.isValid()) {
-        m_backgroundColor = color;
-        update();
-    }
-}
-
 void OpenGLScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
     QGraphicsScene::mouseMoveEvent(event);
@@ -294,11 +213,16 @@ void OpenGLScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
         return;
     if (event->buttons() & Qt::LeftButton) {
         const QPointF delta = event->scenePos() - event->lastScenePos();
-        const Vector3 angularImpulse = Vector3(delta.y(), delta.x(), 0) * 0.1;
+        const Vector3 angularImpulse = Vector3(delta.y(), delta.x(), 0.0f) * 0.1f;
 
         m_rotation += angularImpulse;
-        m_accumulatedMomentum += angularImpulse;
 
+        event->accept();
+        update();
+    }
+    else if (event->buttons() & Qt::RightButton) {
+        const QPointF delta = event->scenePos() - event->lastScenePos();
+        m_cameraTranslation += Vector3(delta.x(), -1*delta.y(), 0.0f) * 0.001f;
         event->accept();
         update();
     }
@@ -310,8 +234,6 @@ void OpenGLScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
     if (event->isAccepted())
         return;
 
-    m_mouseEventTime = m_time.elapsed();
-    m_angularMomentum = m_accumulatedMomentum = Vector3();
     event->accept();
 }
 
@@ -321,8 +243,6 @@ void OpenGLScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
     if (event->isAccepted())
         return;
 
-    const int delta = m_time.elapsed() - m_mouseEventTime;
-    m_angularMomentum = m_accumulatedMomentum * (1000.0 / qMax(1, delta));
     event->accept();
     update();
 }

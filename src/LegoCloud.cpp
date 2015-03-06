@@ -48,15 +48,15 @@ LegoCloud::LegoCloud()
   legalColors_.push_back(LegoBrick::Color4(218/255.0, 133/255.0, 64/255.0, 1));//Bright orange
   legalColors_.push_back(LegoBrick::Color4(105/255.0, 64/255.0, 39/255.0, 1));//Redish brown*/
 
-  legalColors_.push_back(Color3(0.95, 0.95, 0.95));//White
-  legalColors_.push_back(Color3(0.15, 0.15, 0.15));//Black
-  legalColors_.push_back(Color3(1, 0, 0));//Bright red
-  legalColors_.push_back(Color3(0, 0, 1));//Bright blue
-  legalColors_.push_back(Color3(14/255.0, 132/255.0, 36/255.0));//Dark green
-  legalColors_.push_back(Color3(180/255.0, 1, 0));//Lime (Yellowish green)
-  legalColors_.push_back(Color3(1, 1, 0));//Bright yellow
-  legalColors_.push_back(Color3(1, 110/255.0, 0));//Bright orange
-  legalColors_.push_back(Color3(118/255.0, 45/255.0, 28/255.0));//Redish brown
+  legalColors_.push_back(Color3(0.95f, 0.95f, 0.95f));//White
+  legalColors_.push_back(Color3(0.15f, 0.15f, 0.15f));//Black
+  legalColors_.push_back(Color3(1.0f, 0.0f, .00f));//Bright red
+  legalColors_.push_back(Color3(0.0f, 0.0f, 1.0f));//Bright blue
+  legalColors_.push_back(Color3(14.0f/255.0f, 132.0f/255.0f, 36.0f/255.0f));//Dark green
+  legalColors_.push_back(Color3(180.0f/255.0f, 1.0f, 0.0f));//Lime (Yellowish green)
+  legalColors_.push_back(Color3(1.0f, 1.0f, 0.0f));//Bright yellow
+  legalColors_.push_back(Color3(1.0f, 110.0f/255.0f, 0.0f));//Bright orange
+  legalColors_.push_back(Color3(118.0f/255.0f, 45.0f/255.0f, 28.0f/255.0f));//Redish brown
 
   assert(DEFAULT_COLOR_ID < legalColors_.size());
 }
@@ -867,7 +867,7 @@ void LegoCloud::biconnectedComponents()
     index++;
   }
 
-  int num_biconnected_components = 0;
+  size_t num_biconnected_components = 0;
   std::vector<LegoGraph::vertex_descriptor> art_points;
 
   boost::property_map < LegoGraph, int LegoEdge::* >::type bicomponent_map = get(&LegoEdge::biconnected_comp, graph_);
@@ -978,7 +978,7 @@ LegoBrick *LegoCloud::addBrick(int level, int posX, int posY, int sizeX, int siz
   return newBrickPointer;
 }
 
-void LegoCloud::removeBrick(LegoBrick *brick)
+bool LegoCloud::removeBrick(LegoBrick *brick)
 {
   const QSet<LegoBrick*>& neighbours = getNeighbours(brick);//Save the neighbourhood
 
@@ -1005,6 +1005,8 @@ void LegoCloud::removeBrick(LegoBrick *brick)
 
   bool removeOk = bricks_[brick->getLevel()].removeOne(*brick);//Remove the brick
   assert(removeOk);
+
+  return removeOk;
 }
 
 LegoBrick* LegoCloud::mergeBricks(const QSet<LegoBrick *> brickToMerge)//The signature of this method should be changed to (LegoBrick * a, LegoBrick * b)
@@ -1015,10 +1017,12 @@ LegoBrick* LegoCloud::mergeBricks(const QSet<LegoBrick *> brickToMerge)//The sig
   assert(LEVEL < levelNumber_);
 
 
-  foreach(LegoBrick* brick, brickToMerge)
+#ifdef DEBUG
+  Q_FOREACH(LegoBrick* brick, brickToMerge)
   {
     assert(bricks_[LEVEL].contains(*brick));//Trying to merge bricks on different levels or unexisting bricks
   }
+#endif
 
   int minX = INT_MAX;
   int maxX = INT_MIN;
@@ -1598,14 +1602,14 @@ int LegoCloud::findBestCut(LegoBrick *brick, const QVector<QPair<LegoBrick, Lego
 
   //Compute the 2 values
   int mainConCompNumber = boost::connected_components(subgraph, boost::dummy_property_map(), boost::vertex_index_map(vertex_index_pmap));
-  int mainBiconCompNumber = boost::biconnected_components(subgraph, boost::dummy_property_map(), boost::vertex_index_map(vertex_index_pmap));
+  size_t mainBiconCompNumber = boost::biconnected_components(subgraph, boost::dummy_property_map(), boost::vertex_index_map(vertex_index_pmap));
 
   //Now remove the center vertex
   boost::clear_vertex(v0, subgraph);
   boost::remove_vertex(v0, subgraph);
 
   int bestCutConCompNumber = mainConCompNumber;
-  int bestCutBiconCompNumber = mainBiconCompNumber;
+  size_t bestCutBiconCompNumber = mainBiconCompNumber;
   int bestCutIndex = -1;
 
   //Add 2 new vertices corresponding to the 2 bricks in a Cut
@@ -1642,7 +1646,7 @@ int LegoCloud::findBestCut(LegoBrick *brick, const QVector<QPair<LegoBrick, Lego
 
     //Compute the 2 values for this graph configuration
     int currentConCompNumber = boost::connected_components(subgraph, boost::dummy_property_map(), boost::vertex_index_map(vertex_index_pmap));
-    int currentBiconCompNumber = boost::biconnected_components(subgraph, boost::dummy_property_map(), boost::vertex_index_map(vertex_index_pmap));
+    size_t currentBiconCompNumber = boost::biconnected_components(subgraph, boost::dummy_property_map(), boost::vertex_index_map(vertex_index_pmap));
 
     //We are finished with this cut: clear their edges to prepare for the next
     boost::clear_vertex(v1, subgraph);
@@ -1739,7 +1743,7 @@ bool LegoCloud::canRemoveBrick(LegoBrick *brick)
 
   //Compute the 2 values
   int beforeConCompNumber = boost::connected_components(subgraph, boost::dummy_property_map(), boost::vertex_index_map(vertex_index_pmap));
-  int beforeBiconCompNumber = boost::biconnected_components(subgraph, boost::dummy_property_map(), boost::vertex_index_map(vertex_index_pmap));
+  size_t beforeBiconCompNumber = boost::biconnected_components(subgraph, boost::dummy_property_map(), boost::vertex_index_map(vertex_index_pmap));
 
   //Now remove the center vertex
   boost::clear_vertex(v0, subgraph);
@@ -1756,7 +1760,7 @@ bool LegoCloud::canRemoveBrick(LegoBrick *brick)
 
   //Compute the 2 values for this graph without the center brick
   int afterConCompNumber = boost::connected_components(subgraph, boost::dummy_property_map(), boost::vertex_index_map(vertex_index_pmap));
-  int afterBiconCompNumber = boost::biconnected_components(subgraph, boost::dummy_property_map(), boost::vertex_index_map(vertex_index_pmap));
+  size_t afterBiconCompNumber = boost::biconnected_components(subgraph, boost::dummy_property_map(), boost::vertex_index_map(vertex_index_pmap));
 
   if(afterConCompNumber <= beforeConCompNumber && afterBiconCompNumber <= beforeBiconCompNumber)
     return true;

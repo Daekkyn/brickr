@@ -11,10 +11,13 @@
 #include <QtCore/QSettings>
 #include <QInputDialog>
 #include <QApplication>
+#include <QProcess>
+#include <QTextStream>
+#include <fstream>
 
 //#define STATISTICS
 
-AssemblyWidget::AssemblyWidget(std::shared_ptr<AssemblyPlugin> _plugin, QWidget* _parent)
+AssemblyWidget::AssemblyWidget(AssemblyPlugin* _plugin, QWidget* _parent)
   : QWidget(_parent), Ui_AssemblyWidget(), plugin_(_plugin) {
 
   setupUi(this);
@@ -158,6 +161,7 @@ void AssemblyWidget::on_loadFileButton_pressed()
   resetUi();
 }
 
+/*
 void AssemblyWidget::on_loadTextureButton_pressed()
 {
   LegoCloudNode* legoCloudNode = plugin_->getLegoCloudNode();
@@ -179,6 +183,7 @@ void AssemblyWidget::on_loadTextureButton_pressed()
   realColorRadioButton->setChecked(true);
   legoCloudNode->nodeUpdated();
 }
+*/
 
 void AssemblyWidget::on_mergeButton_pressed()
 {
@@ -542,7 +547,7 @@ void AssemblyWidget::resetUi()
 
 void AssemblyWidget::loadFile(const QString &filePath, int voxelizationResolution)
 {
-  QFileInfo selectedFileinfo(filePath);
+  QFileInfo selectedFileinfo(filePath), scaledFileinfo(filePath);
 
   if(!selectedFileinfo.exists() || !selectedFileinfo.isReadable())
   {
@@ -553,17 +558,34 @@ void AssemblyWidget::loadFile(const QString &filePath, int voxelizationResolutio
   QString binvoxFilePath;
   if(isMeshExtensionSupported(selectedFileinfo.suffix()))
   {
+    QString scaledFilePath = selectedFileinfo.absolutePath() + "/_" +selectedFileinfo.baseName() + "_scaled.obj";
+
+    {
+      QFile scaledFile(scaledFilePath);
+      scaledFile.remove();
+    }
+    scaleMesh(filePath, scaledFilePath);
+    scaledFileinfo = QFileInfo(scaledFilePath);
+
     assert(voxelizationResolution > 0);
     binvoxFilePath = selectedFileinfo.absolutePath() + "/"+selectedFileinfo.baseName()+QString::number(voxelizationResolution) + ".binvox";
     QFile binvoxFile(binvoxFilePath);
 
-    //We make sure that binvoxFilePath does not exist
-    std::cout << "Removing file: " << qPrintable(binvoxFilePath) << std::endl;
-    binvoxFile.remove();
+    if (binvoxFile.exists())
+    {
+      //We make sure that binvoxFilePath does not exist
+      std::cout << "Removing file: " << qPrintable(binvoxFilePath) << std::endl;
+      binvoxFile.remove();
+    }
 
     //First we try to find it in its default location
+#ifdef WIN32
+    QFileInfo binvoxProgramFileInfo(QCoreApplication::applicationDirPath() + "/binvox.exe");
+#else
     QFileInfo binvoxProgramFileInfo(QCoreApplication::applicationDirPath() + "/../Resources/binvox");
-    std::cout << qPrintable(QCoreApplication::applicationFilePath()) << std::endl;
+#endif
+//    std::cout << qPrintable(QCoreApplication::applicationFilePath()) << std::endl;
+
     if(!binvoxProgramFileInfo.exists())
     {
       QSettings settings;
@@ -589,7 +611,7 @@ void AssemblyWidget::loadFile(const QString &filePath, int voxelizationResolutio
     }
 
     //We first check that the following file does not exist or we remove it (otherwise the binvox program will rename the output file)
-    QFile binvoxProgramOutputFile(selectedFileinfo.absolutePath()+"/"+selectedFileinfo.baseName()+".binvox");
+    QFile binvoxProgramOutputFile(scaledFileinfo.absolutePath()+"/"+scaledFileinfo.baseName()+".binvox");
 
     if(binvoxProgramOutputFile.exists())
     {
@@ -597,10 +619,21 @@ void AssemblyWidget::loadFile(const QString &filePath, int voxelizationResolutio
       assert(binvoxProgramOutputFile.remove());
     }
 
-//    QString command(binvoxProgramFileInfo.absoluteFilePath()+ " -pb -d "+ QString::number(voxelizationResolution) + " " +filePath);
-    QString command(binvoxProgramFileInfo.absoluteFilePath()+ " -d "+ QString::number(voxelizationResolution) + " " +filePath);
+#ifdef WIN32
+    QString command("\"" + binvoxProgramFileInfo.absoluteFilePath() + "\" -d "+ QString::number(voxelizationResolution) + " \"" + scaledFilePath + "\"");
+#else
+    QString command("\"" + binvoxProgramFileInfo.absoluteFilePath()+ "\" -pb -d "+ QString::number(voxelizationResolution) + " \"" +scaledFilePath + "\"");
+#endif
+//    QString command(binvoxProgramFileInfo.absoluteFilePath()+ " -d "+ QString::number(voxelizationResolution) + " " +filePath);
     std::cout << "Running " << qPrintable(command) << std::endl;
-    system(command.toStdString().c_str());
+
+
+    QProcess process;
+    process.start(command);
+    process.waitForFinished(-1); // will wait forever until finished
+
+//    std::cout << process.readAllStandardOutput().data() << std::endl;
+    std::cerr << process.readAllStandardError().data() << std::endl;
 
     if(!binvoxProgramOutputFile.exists())
     {
@@ -609,6 +642,11 @@ void AssemblyWidget::loadFile(const QString &filePath, int voxelizationResolutio
     }
 
     binvoxProgramOutputFile.rename(binvoxFile.fileName());
+
+    {
+      QFile scaledFile(scaledFilePath);
+      scaledFile.remove();
+    }
 
     assert(binvoxFile.exists());
   }
@@ -630,12 +668,47 @@ void AssemblyWidget::loadFile(const QString &filePath, int voxelizationResolutio
 
 bool AssemblyWidget::isMeshExtensionSupported(const QString &extension) const
 {
-  return extension.compare("obj", Qt::CaseInsensitive) == 0 ||
-      extension.compare("off", Qt::CaseInsensitive) == 0 ||
-      extension.compare("stl", Qt::CaseInsensitive) == 0 ||
-      extension.compare("ply", Qt::CaseInsensitive) == 0 ||
-      extension.compare("dxf", Qt::CaseInsensitive) == 0;
+  return extension.compare("obj", Qt::CaseInsensitive) == 0;// ||
+//      extension.compare("off", Qt::CaseInsensitive) == 0 ||
+//      extension.compare("stl", Qt::CaseInsensitive) == 0 ||
+//      extension.compare("ply", Qt::CaseInsensitive) == 0 ||
+//      extension.compare("dxf", Qt::CaseInsensitive) == 0;
+}
 
+void AssemblyWidget::scaleMesh(const QString &filePath, const QString &scaledFilePath)
+{
+  QFile infile(filePath);
+  if (!infile.open(QFile::ReadOnly))
+    return;
+
+  QFile outfile(scaledFilePath);
+  if (!outfile.open(QFile::WriteOnly | QFile::Truncate))
+    return;
+
+  QTextStream in(&infile);
+  QTextStream out(&outfile);
+
+  while (!in.atEnd()) {
+    QString input = in.readLine();
+    if (input.isEmpty() || input[0] == '#')
+      continue;
+
+    QTextStream ts(&input);
+    QString id;
+    ts >> id;
+    if (id == "v") {
+      Vector3 p;
+      for (int i = 0; i < 3; ++i) {
+        ts >> p[i];
+      }
+      out << "v " << p[0] << " " << 0.83333333*p[1] << " " << p[2] << "\n";
+    } else {
+      out << input << "\n";
+    }
+  }
+
+  infile.close();
+  outfile.close();
 }
 
 

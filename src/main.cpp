@@ -10,7 +10,7 @@ class GraphicsView : public QGraphicsView
 public:
     GraphicsView()
     {
-        setWindowTitle(tr("Brick Assembly"));
+        setWindowTitle(tr("Brickr"));
     }
 
 protected:
@@ -28,10 +28,9 @@ int main(int argc, char **argv)
     GraphicsView view;
     view.setViewport(new QGLWidget(QGLFormat(QGL::SampleBuffers)));
     view.setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
-    view.setScene(new OpenGLScene);
+    view.setScene(new OpenGLScene(1000,800));
+    view.resize(1000, 800);
     view.show();
-
-    view.resize(1280, 1024);
 
     return app.exec();
 }

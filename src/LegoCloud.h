@@ -67,7 +67,7 @@ public:
 
 private:
   LegoBrick *addBrick(int level, int posX, int posY, int sizeX, int sizeY);//Level must already exist
-  void removeBrick(LegoBrick* brick);
+  bool removeBrick(LegoBrick* brick);
   LegoBrick *mergeBricks(const QSet<LegoBrick *> brickToMerge);
   bool splitBrick(LegoBrick* brick);
   bool areNeighbours(LegoBrick* brick1, LegoBrick* brick2);//This is for building the neighbourhood (it does not use neighbourhood_)

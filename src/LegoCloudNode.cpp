@@ -9,7 +9,12 @@
 #include "LegoCloud.h"
 #include "LegoGraph.h"
 
+#ifdef WIN32
+#include <windows.h>
+#include <gl/GLU.h>
+#else
 #include <glu.h>
+#endif
 
 #define KNOB_RESOLUTION_DISPLAY 15
 #define KNOB_RESOLUTION_OBJ_EXPORT 15
@@ -95,8 +100,6 @@ void LegoCloudNode::render()
 
   if(renderBricks_)
   {
-    //glEnable(GL_LIGHTING);
-
 //    glPushAttrib(GL_POLYGON_OFFSET_FILL);
 //    glEnable(GL_POLYGON_OFFSET_FILL);
 //    glPolygonOffset(1.0, 1.0);
@@ -129,12 +132,10 @@ void LegoCloudNode::render()
 
   drawDirty_ = false;
 
-  glDisableClientState(GL_NORMAL_ARRAY);
   glDisable(GL_COLOR_MATERIAL);
   glDisable(GL_LIGHT0);
   glDisable(GL_LIGHTING);
 
-  glDisableClientState(GL_VERTEX_ARRAY);
   glDisable(GL_DEPTH_TEST);
 
   if(renderGraph_)
@@ -526,7 +527,7 @@ void LegoCloudNode::exportToObj(QString filename)
     std::cerr << "LegoCloudNode: unable to create or open the file: " << filename.toStdString().c_str() << std::endl;
   }
 
-  const float LEGO_VERTICAL_TOLERANCE = 0.0001;
+  const float LEGO_VERTICAL_TOLERANCE = 0.0001f;
   int brickIndex = 0;
   int vertexIndex = 1;
   //const QList<LegoBrick*>& outterBricks = legoCloud_->getOuterBricks();
