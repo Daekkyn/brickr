@@ -1,8 +1,8 @@
 #ifndef LEGO_CLOUD_H
 #define LEGO_CLOUD_H
 
-#include <qvector>
-#include <qset>
+#include <QVector>
+#include <QSet>
 #include <QMultiHash>
 #include <QPair>
 #include <QMap>

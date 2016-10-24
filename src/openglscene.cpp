@@ -13,7 +13,7 @@
 #include <windows.h>
 #include <gl/GLU.h>
 #else
-#include <glu.h>
+#include <GL/glu.h>
 #endif
 
 #define QT_NO_CONCURRENT

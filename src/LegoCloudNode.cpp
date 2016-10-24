@@ -13,7 +13,7 @@
 #include <windows.h>
 #include <gl/GLU.h>
 #else
-#include <glu.h>
+#include <GL/glu.h>
 #endif
 
 #define KNOB_RESOLUTION_DISPLAY 15

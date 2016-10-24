@@ -1,7 +1,7 @@
 #ifndef ASSEMBLY_PLUGIN_H
 #define ASSEMBLY_PLUGIN_H
 
-#include <Memory>
+#include <memory>
 #include <string>
 #include <QSet>
 
