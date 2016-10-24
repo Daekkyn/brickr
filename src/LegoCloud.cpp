@@ -255,7 +255,7 @@ void LegoCloud::buildNeighbourhood()//Assumption: there is only 1x1 bricks
         innerBricks_.append(&(*brickIt));
       }
 
-      brickIt->setColorId(DEFAULT_COLOR_ID);
+      //brickIt->setColorId(DEFAULT_COLOR_ID);
 
       if(neighbourNumber == 0)
       {

@@ -10,6 +10,9 @@
 #include <QSet>
 #include <QFileInfo>
 #include <QTime>
+#include <QtDebug>
+#include <QFile>
+#include <QHash>
 
 #define AUTO_OPTIMIZE_MAX_STEPS 50
 
@@ -172,6 +175,8 @@ bool AssemblyPlugin::parseBinvox(const std::string& filename, LegoCloudNode* leg
   float tx, ty, tz;
   float scale;
   int depth, width, height;
+  QFile colorFile(QString::fromStdString(filename)+".color");
+  QHash<int, int> colors;
 
   std::ifstream input;
   input.open(filename.c_str(),std::ios::binary);
@@ -224,6 +229,24 @@ bool AssemblyPlugin::parseBinvox(const std::string& filename, LegoCloudNode* leg
   size = width * height * depth;
   legoCloudNode->getLegoCloud()->setVoxelGridDimmension(height, width, depth);
 
+  if(colorFile.exists()) {
+    if(colorFile.open(QIODevice::ReadOnly)) {
+        QTextStream stream(&colorFile);
+
+        while(!stream.atEnd()) {
+            QString line = stream.readLine();
+            QStringList fields = line.split(";");
+            int key = fields[2].toInt() * width * height + fields[1].toInt() * width + fields[0].toInt();
+
+            colors.insert(key, fields[3].toInt());
+        }
+
+        qDebug() << colors;
+
+        colorFile.close();
+    }
+  }
+
   //
   // read voxel data
   //
@@ -249,7 +272,12 @@ bool AssemblyPlugin::parseBinvox(const std::string& filename, LegoCloudNode* leg
               int level = (i%(width*height))%height;
               int y = ((i-level)%(width*height))/height;
               int x = (i - level - y*height)/(width*height);
+              int key = level * width * height + y * width + x;
+
               LegoBrick* brick = legoCloudNode->getLegoCloud()->addBrick(level, x, y);
+              if(colors.contains(key)) {
+                  brick->setColorId(colors.value(key));
+              }
               legoCloudNode->getLegoCloud()->addVoxel(level, x, y, brick);
           }
           nr_voxels += count;
