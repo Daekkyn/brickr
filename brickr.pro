@@ -8,6 +8,7 @@ DEPENDPATH += . forms src
 INCLUDEPATH += . src
 QT += svg opengl
 LIBS += -lGLU
+QMAKE_CXXFLAGS += -std=c++11
 
 # Input
 HEADERS += src/AssemblyPlugin.h \

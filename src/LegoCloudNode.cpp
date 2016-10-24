@@ -12,6 +12,8 @@
 #ifdef WIN32
 #include <windows.h>
 #include <gl/GLU.h>
+#elif __APPLE__
+#include <glu.h>
 #else
 #include <GL/glu.h>
 #endif
