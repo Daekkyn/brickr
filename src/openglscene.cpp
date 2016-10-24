@@ -12,8 +12,10 @@
 #ifdef WIN32
 #include <windows.h>
 #include <gl/GLU.h>
-#else
+#elif __APPLE__
 #include <glu.h>
+#else
+#include <GL/glu.h>
 #endif
 
 #define QT_NO_CONCURRENT
